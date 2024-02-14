@@ -10,7 +10,7 @@ app = Flask(__name__)
 products = [Product(1, "Produktas A"), Product(2, "Produktas B"), Product(3, "Produktas C")]
 categories = [Category(1, "Kategorija A"), Category(2, "Kategorija B"), Category(3, "Kategorija C")]
 # Kategorijos ID, egzistuojančių pasirinkimų kategorijoje ID sąrašas
-category_choices = [CategoryChoices(1, [1, 2]), CategoryChoices(2, [2, 3]), CategoryChoices(3, [1, 3])]
+category_choices_arr = [CategoryChoices(1, [1, 2]), CategoryChoices(2, [2, 3]), CategoryChoices(3, [1, 3])]
 choices = [Choice(1, "Pasirinkimas A"), Choice(2, "Pasirinkimas B"), Choice(3, "Pasirinkimas C")]
 # Produkto ID, Kategorijos ID, Produkto tenkinami pasirinkimai iš nurodytos kategorijos
 product_categories_choices = [ProductCategoryChoices(1, 1, [1, 2]), ProductCategoryChoices(2, 2, [3]),
@@ -78,7 +78,104 @@ def handle_choices_two(choice_id):
                 choices.pop(index)
                 return "Removed choice successfully"
         return "No choice found with provided ID"
-        pass
+    else:
+        return "Bad method"
+
+
+@app.route("/category_choices", methods=["GET", "POST"])
+def handle_category_choices_one():
+    if request.method == "GET":
+        return CategoryChoices.serialize_array(category_choices_arr)
+    elif request.method == "POST":
+        data = request.json
+        errors = []
+        if "category_id" not in data:
+            errors.append("No category ID is provided")
+        elif type(data["category_id"]) != int:
+            errors.append("Category ID must be an integer")
+        else:
+            exists = False
+            for category in categories:
+                if category.id == data["category_id"]:
+                    exists = True
+            if exists:
+                alreadyCreated = False
+                for category_choices in category_choices_arr:
+                    if category_choices.category_id == data["category_id"]:
+                        alreadyCreated = True
+                if alreadyCreated:
+                    errors.append("Category with provided ID already has a choices record")
+            else:
+                errors.append("Category ID provided does not exist")
+
+        if "choice_ids" not in data:
+            errors.append("No choice IDs are provided")
+        else:
+            if type(data["choice_ids"]) == list:
+                if len(data["choice_ids"]) == 0:
+                    errors.append("Choice IDs list must not be empty")
+                else:
+                    allInts = True
+                    for choice_id in data["choice_ids"]:
+                        if type(choice_id) != int:
+                            allInts = False
+                    if not allInts:
+                        errors.append("Choice IDs must be integers")
+            else:
+                errors.append("Choice IDs must be provided as a list")
+
+        if len(errors) > 0:
+            return errors
+        else:
+            category_choices = CategoryChoices(data["category_id"], data["choice_ids"])
+            category_choices_arr.append(category_choices)
+            return category_choices.serialize()
+
+
+@app.route("/category_choices/<int:category_id>", methods=["GET", "PUT", "DELETE"])
+def handle_category_choices_two(category_id):
+    if request.method == "GET":
+        for category_choices in category_choices_arr:
+            if category_choices.category_id == category_id:
+                return category_choices.serialize()
+        return "No category choices record found with provided category ID"
+    elif request.method == "PUT":
+        data = request.json
+        errors = []
+        current_category_choices = ()
+        for category_choices in category_choices_arr:
+            if category_choices.category_id == data["category_id"]:
+                current_category_choices = category_choices
+        if current_category_choices == ():
+            errors.append("No category choices record with provided category ID")
+        if "choice_ids" not in data:
+            errors.append("No choice IDs are provided")
+        else:
+            if type(data["choice_ids"]) == list:
+                if len(data["choice_ids"]) == 0:
+                    errors.append("Choice IDs list must not be empty")
+                else:
+                    allInts = True
+                    for choice_id in data["choice_ids"]:
+                        if type(choice_id) != int:
+                            allInts = False
+                    if not allInts:
+                        errors.append("Choice IDs must be integers")
+            else:
+                errors.append("Choice IDs must be provided as a list")
+
+        if len(errors) > 0:
+            return errors
+        else:
+            current_category_choices.choice_ids = data["choice_ids"]
+            return current_category_choices.serialize()
+    elif request.method == "DELETE":
+        for category_choices in category_choices_arr:
+            if category_choices.category_id == category_id:
+                index = category_choices_arr.index(category_choices)
+                category_choices_arr.pop(index)
+                return "Removed category choices record successfully"
+        return "No category choices record found with provided category ID"
     else:
         return "Bad method"
 
