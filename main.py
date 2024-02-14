@@ -31,6 +31,12 @@ def handle_choices_one():
         errors = []
         if "name" not in json_data:
             errors.append("Name is required")
+        else:
+            if type(json_data["name"]) != str:
+                errors.append("Name must be a string")
+            else:
+                if len(json_data["name"].strip()) == 0:
+                    errors.append("Name must not be empty")
         if len(errors) == 0:
             highest_id = 0
             for choice in choices:
@@ -55,22 +61,28 @@ def handle_choices_two(choice_id):
                 result = choice.serialize()
         return result
     elif request.method == "PUT":
-        result = "No choice found"
         data = request.json
+        errors = []
         choice_by_id = ()
         for choice in choices:
             if choice.id == choice_id:
                 choice_by_id = choice
         if choice_by_id == ():
-            return result
+            errors.append("No choice found with provided ID")
         else:
-            if any(key in data for key in ["name"]):
-                if "name" in data:
-                    choice_by_id.name = data["name"]
-                return choice_by_id.serialize()
+            if "name" in data:
+                if type(data["name"]) != str:
+                    errors.append("Name must be a string")
+                else:
+                    if data["name"].strip() == "":
+                        errors.append("Name must not be empty")
             else:
-                result = "No valid data provided"
-            return result
+                errors.append("No name provided")
+        if len(errors) == 0:
+            choice_by_id.name = data["name"].strip()
+            return choice_by_id.serialize()
+        else:
+            return errors
     elif request.method == "DELETE":
         for choice in choices:
             if choice.id == choice_id:
@@ -144,7 +156,7 @@ def handle_category_choices_two(category_id):
         errors = []
         current_category_choices = ()
         for category_choices in category_choices_arr:
-            if category_choices.category_id == data["category_id"]:
+            if category_choices.category_id == category_id:
                 current_category_choices = category_choices
         if current_category_choices == ():
             errors.append("No category choices record with provided category ID")
