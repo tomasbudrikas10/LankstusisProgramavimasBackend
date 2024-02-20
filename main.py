@@ -4,6 +4,13 @@ from category import Category
 from choice import Choice
 from category_choices import CategoryChoices
 from product_category_choices import ProductCategoryChoices
+import mysql.connector
+cnx = mysql.connector.connect(
+    host="127.0.0.1",
+    port=3306,
+    user="root",
+    password="",
+    database="mydb")
 
 app = Flask(__name__)
 
@@ -19,7 +26,18 @@ product_categories_choices = [ProductCategoryChoices(1, 1, [1, 2]), ProductCateg
 
 @app.route("/")
 def hello_world():
-    return f"<p>Hello World!</p>"
+    cursor = cnx.cursor()
+    query = ("INSERT INTO kategorijos"
+             "(pavadinimas)"
+             "VALUES (%s)")
+    try:
+        cursor.execute(query, ("kategorija",))
+        cnx.commit()
+        cursor.close()
+        return "Prideta nauja kategorija"
+    except Exception as e:
+        cursor.close()
+        return str(e)
 
 
 @app.route("/choices/", methods=["GET", "POST"])
