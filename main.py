@@ -27,6 +27,95 @@ def hello_world():
         return str(e)
 
 
+@app.route("/categories/", methods=["GET", "POST"])
+def handle_categories_one():
+    if request.method == "GET":
+        try:
+            cursor = cnx.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM kategorijos")
+            rows = cursor.fetchall()
+            cursor.close()
+            return json.dumps(rows)
+        except Exception as e:
+            return str(e)
+    elif request.method == "POST":
+        query = ("INSERT INTO kategorijos"
+                 "(pavadinimas)"
+                 "VALUES (%s)")
+        json_data = request.json
+        errors = []
+        if "name" not in json_data:
+            errors.append("Name is required")
+        else:
+            if type(json_data["name"]) != str:
+                errors.append("Name must be a string")
+            else:
+                if len(json_data["name"].strip()) == 0:
+                    errors.append("Name must not be empty")
+        if len(errors) == 0:
+            try:
+                cursor = cnx.cursor()
+                cursor.execute(query, (json_data["name"],))
+                cnx.commit()
+                cursor.close()
+                return json.dumps(json_data)
+            except Exception as e:
+                return str(e)
+        else:
+            return errors
+    else:
+        return "Bad method"
+
+
+@app.route("/categories/<int:category_id>", methods=["GET", "PUT", "DELETE"])
+def handle_categories_two(category_id):
+    if request.method == "GET":
+        try:
+            cursor = cnx.cursor()
+            cursor.execute("SELECT * FROM kategorijos WHERE id = %s", (category_id,))
+            result = cursor.fetchone()
+            if result is not None:
+                return json.dumps(result)
+            else:
+                return "No category found."
+        except Exception as e:
+            return str(e)
+    elif request.method == "PUT":
+        data = request.json
+        errors = []
+        cursor = cnx.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM kategorijos WHERE id = %s", (category_id,))
+        result = cursor.fetchone()
+        if result is None:
+            errors.append("No category found with provided ID")
+        else:
+            if "name" in data:
+                if type(data["name"]) != str:
+                    errors.append("Name must be a string")
+                else:
+                    if data["name"].strip() == "":
+                        errors.append("Name must not be empty")
+            else:
+                errors.append("No name provided")
+        if len(errors) == 0:
+            cursor.execute("UPDATE `kategorijos` SET `pavadinimas`=%s WHERE `id` = %s", (data["name"].strip(), category_id))
+            cnx.commit()
+            result["pavadinimas"] = data["name"].strip()
+            return json.dumps(result)
+        else:
+            return errors
+    elif request.method == "DELETE":
+        cursor = cnx.cursor()
+        cursor.execute("DELETE FROM kategorijos WHERE id = %s", (category_id,))
+        cnx.commit()
+        if cursor.rowcount == 0:
+            return "No category found with provided ID"
+        else:
+            return "Removed category successfully"
+    else:
+        return "Bad method"
+
+
 @app.route("/choices/", methods=["GET", "POST"])
 def handle_choices_one():
     if request.method == "GET":
