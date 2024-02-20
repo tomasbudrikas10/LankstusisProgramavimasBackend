@@ -1,10 +1,5 @@
 from flask import Flask, request
 import json
-from product import Product
-from category import Category
-from choice import Choice
-from category_choices import CategoryChoices
-from product_category_choices import ProductCategoryChoices
 import mysql.connector
 cnx = mysql.connector.connect(
     host="127.0.0.1",
@@ -14,15 +9,6 @@ cnx = mysql.connector.connect(
     database="mydb")
 
 app = Flask(__name__)
-
-products = [Product(1, "Produktas A"), Product(2, "Produktas B"), Product(3, "Produktas C")]
-categories = [Category(1, "Kategorija A"), Category(2, "Kategorija B"), Category(3, "Kategorija C")]
-# Kategorijos ID, egzistuojančių pasirinkimų kategorijoje ID sąrašas
-category_choices_arr = [CategoryChoices(1, [1, 2]), CategoryChoices(2, [2, 3]), CategoryChoices(3, [1, 3])]
-choices = [Choice(1, "Pasirinkimas A"), Choice(2, "Pasirinkimas B"), Choice(3, "Pasirinkimas C")]
-# Produkto ID, Kategorijos ID, Produkto tenkinami pasirinkimai iš nurodytos kategorijos
-product_categories_choices = [ProductCategoryChoices(1, 1, [1, 2]), ProductCategoryChoices(2, 2, [3]),
-                              ProductCategoryChoices(3, 3, [1])]
 
 
 @app.route("/")
