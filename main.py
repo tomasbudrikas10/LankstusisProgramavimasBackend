@@ -1,4 +1,5 @@
 from flask import Flask, request
+import json
 from product import Product
 from category import Category
 from choice import Choice
@@ -43,8 +44,18 @@ def hello_world():
 @app.route("/choices/", methods=["GET", "POST"])
 def handle_choices_one():
     if request.method == "GET":
-        return Choice.serialize_array(choices)
+        try:
+            cursor = cnx.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM pasirinkimai")
+            rows = cursor.fetchall()
+            cursor.close()
+            return json.dumps(rows)
+        except Exception as e:
+            return str(e)
     elif request.method == "POST":
+        query = ("INSERT INTO pasirinkimai"
+                 "(pavadinimas)"
+                 "VALUES (%s)")
         json_data = request.json
         errors = []
         if "name" not in json_data:
@@ -56,14 +67,14 @@ def handle_choices_one():
                 if len(json_data["name"].strip()) == 0:
                     errors.append("Name must not be empty")
         if len(errors) == 0:
-            highest_id = 0
-            for choice in choices:
-                if choice.id > highest_id:
-                    highest_id = choice.id
-
-            choice = Choice(highest_id + 1, json_data["name"])
-            choices.append(choice)
-            return choice.serialize()
+            try:
+                cursor = cnx.cursor()
+                cursor.execute(query, (json_data["name"],))
+                cnx.commit()
+                cursor.close()
+                return json.dumps(json_data)
+            except Exception as e:
+                return str(e)
         else:
             return errors
     else:
@@ -73,19 +84,23 @@ def handle_choices_one():
 @app.route("/choices/<int:choice_id>", methods=["GET", "PUT", "DELETE"])
 def handle_choices_two(choice_id):
     if request.method == "GET":
-        result = "No choice found"
-        for choice in choices:
-            if choice.id == choice_id:
-                result = choice.serialize()
-        return result
+        try:
+            cursor = cnx.cursor()
+            cursor.execute("SELECT * FROM pasirinkimai WHERE id = %s", (choice_id,))
+            result = cursor.fetchone()
+            if result is not None:
+                return json.dumps(result)
+            else:
+                return "No choice found."
+        except Exception as e:
+            return str(e)
     elif request.method == "PUT":
         data = request.json
         errors = []
-        choice_by_id = ()
-        for choice in choices:
-            if choice.id == choice_id:
-                choice_by_id = choice
-        if choice_by_id == ():
+        cursor = cnx.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM pasirinkimai WHERE id = %s", (choice_id,))
+        result = cursor.fetchone()
+        if result is None:
             errors.append("No choice found with provided ID")
         else:
             if "name" in data:
@@ -97,17 +112,18 @@ def handle_choices_two(choice_id):
             else:
                 errors.append("No name provided")
         if len(errors) == 0:
-            choice_by_id.name = data["name"].strip()
-            return choice_by_id.serialize()
+            cursor.execute("UPDATE `pasirinkimai` SET `pavadinimas`=%s WHERE `id` = %s", (data["name"].strip(), choice_id))
+            result["pavadinimas"] = data["name"].strip()
+            return json.dumps(result)
         else:
             return errors
     elif request.method == "DELETE":
-        for choice in choices:
-            if choice.id == choice_id:
-                index = choices.index(choice)
-                choices.pop(index)
-                return "Removed choice successfully"
-        return "No choice found with provided ID"
+        cursor = cnx.cursor()
+        cursor.execute("DELETE FROM pasirinkimai WHERE id = %s", (choice_id,))
+        if cursor.rowcount == 0:
+            return "No choice found with provided ID"
+        else:
+            return "Removed choice successfully"
     else:
         return "Bad method"
 
