@@ -52,6 +52,16 @@ def handle_products_one():
             else:
                 if len(json_data["name"].strip()) == 0:
                     errors.append("Name must not be empty")
+                else:
+                    try:
+                        cursor = cnx.cursor(dictionary=True)
+                        cursor.execute("SELECT * FROM produktai WHERE `pavadinimas`=%s", (json_data["name"],))
+                        result = cursor.fetchone()
+                        cursor.close()
+                        if result is not None:
+                            errors.append("A product with the provided name already exists")
+                    except Exception as e:
+                        return str(e)
         if "description" not in json_data:
             errors.append("Description is required")
         else:
@@ -90,7 +100,7 @@ def handle_products_one():
                 cursor.execute(query, (json_data["name"].strip(), json_data["description"].strip(), json_data["image_url"].strip(), json_data["manufacturer"].strip(), json_data["product_url"].strip()))
                 cnx.commit()
                 cursor.close()
-                return json.dumps(json_data)
+                return "Successfully created product."
             except Exception as e:
                 return str(e)
         else:
@@ -105,6 +115,7 @@ def handle_products_two(product_id):
         try:
             cursor = cnx.cursor()
             cursor.execute("SELECT * FROM produktai WHERE id = %s", (product_id,))
+            cursor.close()
             result = cursor.fetchone()
             if result is not None:
                 return json.dumps(result)
@@ -129,6 +140,15 @@ def handle_products_two(product_id):
                 else:
                     if len(json_data["name"].strip()) == 0:
                         errors.append("Name must not be empty")
+                    else:
+                        try:
+                            cursor.execute("SELECT * FROM produktai WHERE `pavadinimas`=%s", (json_data["name"],))
+                            result = cursor.fetchone()
+                            if result is not None and result["id"] != product_id:
+                                errors.append("A product with the provided name already exists")
+                        except Exception as e:
+                            cursor.close()
+                            return str(e)
             if "description" not in json_data:
                 errors.append("Description is required")
             else:
@@ -163,22 +183,26 @@ def handle_products_two(product_id):
                         errors.append("Product URL must not be empty")
         if len(errors) == 0:
             try:
-                cursor.execute("UPDATE `produktai` SET `pavadinimas`=%s, `aprasymas`=%s, `paveiksliukas`=%s, `gamintojas`=%s, `produkto_puslapis`=%s WHERE `id` = %s", (json_data["name"].strip(), json_data["description"], json_data["image_url"], json_data["manufacturer"], json_data["product_url"], product_id))
+                cursor.execute("UPDATE `produktai` SET `pavadinimas`=%s, `aprasymas`=%s, `paveiksliukas`=%s, `gamintojas`=%s, `produkto_puslapis`=%s WHERE `id` = %s", (json_data["name"].strip(), json_data["description"].strip(), json_data["image_url"].strip(), json_data["manufacturer"].strip(), json_data["product_url"].strip(), product_id))
+                cursor.close()
                 cnx.commit()
-                return json.dumps(result)
+                return "Successfully updated product."
             except Exception as e:
+                cursor.close()
                 return str(e)
         else:
+            cursor.close()
             return errors
     elif request.method == "DELETE":
         try:
             cursor = cnx.cursor()
             cursor.execute("DELETE FROM produktai WHERE id = %s", (product_id,))
+            cursor.close()
             cnx.commit()
             if cursor.rowcount == 0:
-                return "No category found with provided ID"
+                return "No product found with provided ID"
             else:
-                return "Removed category successfully"
+                return "Removed product successfully"
         except Exception as e:
             return str(e)
     else:
