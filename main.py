@@ -113,6 +113,7 @@ def handle_choices_two(choice_id):
                 errors.append("No name provided")
         if len(errors) == 0:
             cursor.execute("UPDATE `pasirinkimai` SET `pavadinimas`=%s WHERE `id` = %s", (data["name"].strip(), choice_id))
+            cnx.commit()
             result["pavadinimas"] = data["name"].strip()
             return json.dumps(result)
         else:
@@ -120,6 +121,7 @@ def handle_choices_two(choice_id):
     elif request.method == "DELETE":
         cursor = cnx.cursor()
         cursor.execute("DELETE FROM pasirinkimai WHERE id = %s", (choice_id,))
+        cnx.commit()
         if cursor.rowcount == 0:
             return "No choice found with provided ID"
         else:
@@ -131,97 +133,120 @@ def handle_choices_two(choice_id):
 @app.route("/category_choices", methods=["GET", "POST"])
 def handle_category_choices_one():
     if request.method == "GET":
-        return CategoryChoices.serialize_array(category_choices_arr)
+        try:
+            cursor = cnx.cursor()
+            cursor.execute("SELECT * FROM kategorijospasirinkimai")
+            result = cursor.fetchall()
+            return json.dumps(result)
+        except Exception as e:
+            return str(e)
     elif request.method == "POST":
         data = request.json
         errors = []
+        cursor = cnx.cursor()
         if "category_id" not in data:
             errors.append("No category ID is provided")
         elif type(data["category_id"]) != int:
             errors.append("Category ID must be an integer")
         else:
-            exists = False
-            for category in categories:
-                if category.id == data["category_id"]:
-                    exists = True
-            if exists:
-                alreadyCreated = False
-                for category_choices in category_choices_arr:
-                    if category_choices.category_id == data["category_id"]:
-                        alreadyCreated = True
-                if alreadyCreated:
-                    errors.append("Category with provided ID already has a choices record")
-            else:
-                errors.append("Category ID provided does not exist")
-
-        if "choice_ids" not in data:
-            errors.append("No choice IDs are provided")
+            cursor.execute("SELECT * FROM kategorijos WHERE id = %s", (data["category_id"],))
+            result = cursor.fetchone()
+            if result is None:
+                errors.append("Category with provided ID does not exist")
+        if "choice_id" not in data:
+            errors.append("No choice ID is provided")
+        elif type(data["choice_id"]) != int:
+            errors.append("Choice ID provided must be an integer")
         else:
-            if type(data["choice_ids"]) == list:
-                if len(data["choice_ids"]) == 0:
-                    errors.append("Choice IDs list must not be empty")
-                else:
-                    allInts = True
-                    for choice_id in data["choice_ids"]:
-                        if type(choice_id) != int:
-                            allInts = False
-                    if not allInts:
-                        errors.append("Choice IDs must be integers")
-            else:
-                errors.append("Choice IDs must be provided as a list")
-
+            cursor.execute("SELECT * FROM pasirinkimai WHERE id = %s", (data["choice_id"],))
+            result = cursor.fetchone()
+            if result is None:
+                errors.append("Choice with provided ID does not exist")
         if len(errors) > 0:
             return errors
         else:
-            category_choices = CategoryChoices(data["category_id"], data["choice_ids"])
-            category_choices_arr.append(category_choices)
-            return category_choices.serialize()
+            cursor.execute("SELECT * FROM kategorijospasirinkimai where (kategorijosId = %s AND pasirinkimoId = %s)", (data["category_id"], data["choice_id"]))
+            result = cursor.fetchone()
+            if result is not None:
+                errors.append("Category already has this choice")
+                cursor.close()
+                return errors
+            else:
+                try:
+                    cursor.execute("INSERT INTO kategorijospasirinkimai (kategorijosId, pasirinkimoId) VALUES (%s, %s)", (data["category_id"], data["choice_id"]))
+                    cnx.commit()
+                    cursor.close()
+                    return "Successfully added choice to category"
+                except Exception as e:
+                    cursor.close()
+                    return str(e)
 
 
-@app.route("/category_choices/<int:category_id>", methods=["GET", "PUT", "DELETE"])
+@app.route("/category_choices/<int:category_id>", methods=["GET", "DELETE"])
 def handle_category_choices_two(category_id):
     if request.method == "GET":
-        for category_choices in category_choices_arr:
-            if category_choices.category_id == category_id:
-                return category_choices.serialize()
-        return "No category choices record found with provided category ID"
-    elif request.method == "PUT":
-        data = request.json
-        errors = []
-        current_category_choices = ()
-        for category_choices in category_choices_arr:
-            if category_choices.category_id == category_id:
-                current_category_choices = category_choices
-        if current_category_choices == ():
-            errors.append("No category choices record with provided category ID")
-        if "choice_ids" not in data:
-            errors.append("No choice IDs are provided")
+        cursor = cnx.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM kategorijospasirinkimai WHERE kategorijosId = %s", (category_id,))
+        result = cursor.fetchall()
+        cursor.close()
+        if cursor.rowcount == 0:
+            return "No category choices found with provided category ID"
         else:
-            if type(data["choice_ids"]) == list:
-                if len(data["choice_ids"]) == 0:
-                    errors.append("Choice IDs list must not be empty")
-                else:
-                    allInts = True
-                    for choice_id in data["choice_ids"]:
-                        if type(choice_id) != int:
-                            allInts = False
-                    if not allInts:
-                        errors.append("Choice IDs must be integers")
-            else:
-                errors.append("Choice IDs must be provided as a list")
-
-        if len(errors) > 0:
-            return errors
-        else:
-            current_category_choices.choice_ids = data["choice_ids"]
-            return current_category_choices.serialize()
+            return json.dumps(result)
     elif request.method == "DELETE":
-        for category_choices in category_choices_arr:
-            if category_choices.category_id == category_id:
-                index = category_choices_arr.index(category_choices)
-                category_choices_arr.pop(index)
-                return "Removed category choices record successfully"
-        return "No category choices record found with provided category ID"
+        cursor = cnx.cursor(dictionary=True)
+        cursor.execute("DELETE FROM kategorijospasirinkimai WHERE kategorijosId = %s", (category_id,))
+        cnx.commit()
+        cursor.close()
+        if cursor.rowcount > 0:
+            return "Successfully deleted all rows with provided category ID: " + str(cursor.rowcount) + " rows affected."
+        else:
+            return "No category choices records found with provided category ID"
+    else:
+        return "Bad method"
+
+
+@app.route("/category_choices/<int:category_id>/<int:choice_id>", methods=["PUT", "DELETE"])
+def handle_category_choices_three(category_id, choice_id):
+    if request.method == "PUT":
+        json_data = request.json
+        errs = []
+        cursor = cnx.cursor(dictionary=True)
+        if "choice_id" not in json_data:
+            errs.append("No new choice ID provided")
+        elif type(json_data["choice_id"]) != int:
+            errs.append("Choice ID must be an integer")
+        else:
+            cursor.execute("SELECT * FROM pasirinkimai WHERE id = %s", (json_data["choice_id"],))
+            result = cursor.fetchone()
+            if result is not None:
+                cursor.execute("SELECT * FROM kategorijospasirinkimai WHERE (kategorijosId = %s AND pasirinkimoId = %s)", (category_id, json_data["choice_id"]))
+                result2 = cursor.fetchone()
+                if result2 is not None:
+                    errs.append("Can't change choice ID of this record to one that already exists on this category")
+        if len(errs) > 0:
+            cursor.close()
+            return errs
+        else:
+            try:
+                cursor.execute(
+                    "UPDATE kategorijospasirinkimai SET pasirinkimoId = %s WHERE (kategorijosId = %s AND pasirinkimoId = %s)",
+                    (json_data["choice_id"], category_id, choice_id))
+                cnx.commit()
+                cursor.close()
+                return "Successfully updated choice ID"
+            except Exception as e:
+                cursor.close()
+                return str(e)
+    elif request.method == "DELETE":
+        cursor = cnx.cursor(dictionary=True)
+        cursor.execute("DELETE FROM kategorijospasirinkimai WHERE (kategorijosId = %s AND pasirinkimoId = %s)", (category_id, choice_id))
+        cnx.commit()
+        cursor.close()
+        if cursor.rowcount > 0:
+            return "Successfully deleted choice on category."
+        else:
+            return "No choice with provided ID on category with provided ID found."
     else:
         return "Bad method"
 
