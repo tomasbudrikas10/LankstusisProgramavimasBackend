@@ -27,6 +27,164 @@ def hello_world():
         return str(e)
 
 
+@app.route("/products/", methods=["GET", "POST"])
+def handle_products_one():
+    if request.method == "GET":
+        try:
+            cursor = cnx.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM produktai")
+            rows = cursor.fetchall()
+            cursor.close()
+            return json.dumps(rows)
+        except Exception as e:
+            return str(e)
+    elif request.method == "POST":
+        query = ("INSERT INTO produktai"
+                 "(pavadinimas, aprasymas, paveiksliukas, gamintojas, produkto_puslapis)"
+                 "VALUES (%s, %s, %s, %s, %s)")
+        json_data = request.json
+        errors = []
+        if "name" not in json_data:
+            errors.append("Name is required")
+        else:
+            if type(json_data["name"]) != str:
+                errors.append("Name must be a string")
+            else:
+                if len(json_data["name"].strip()) == 0:
+                    errors.append("Name must not be empty")
+        if "description" not in json_data:
+            errors.append("Description is required")
+        else:
+            if type(json_data["description"]) != str:
+                errors.append("Description must be a string")
+            else:
+                if len(json_data["description"].strip()) == 0:
+                    errors.append("Description must not be empty")
+        if "image_url" not in json_data:
+            errors.append("Image URL is required")
+        else:
+            if type(json_data["image_url"]) != str:
+                errors.append("Image URL must be a string")
+            else:
+                if len(json_data["image_url"].strip()) == 0:
+                    errors.append("Image URL must not be empty")
+        if "manufacturer" not in json_data:
+            errors.append("Manufacturer is required")
+        else:
+            if type(json_data["manufacturer"]) != str:
+                errors.append("Manufacturer must be a string")
+            else:
+                if len(json_data["manufacturer"].strip()) == 0:
+                    errors.append("Manufacturer must not be empty")
+        if "product_url" not in json_data:
+            errors.append("Product URL is required")
+        else:
+            if type(json_data["product_url"]) != str:
+                errors.append("Product URL must be a string")
+            else:
+                if len(json_data["product_url"].strip()) == 0:
+                    errors.append("Product URL must not be empty")
+        if len(errors) == 0:
+            try:
+                cursor = cnx.cursor()
+                cursor.execute(query, (json_data["name"].strip(), json_data["description"].strip(), json_data["image_url"].strip(), json_data["manufacturer"].strip(), json_data["product_url"].strip()))
+                cnx.commit()
+                cursor.close()
+                return json.dumps(json_data)
+            except Exception as e:
+                return str(e)
+        else:
+            return errors
+    else:
+        return "Bad method"
+
+
+@app.route("/products/<int:product_id>", methods=["GET", "PUT", "DELETE"])
+def handle_products_two(product_id):
+    if request.method == "GET":
+        try:
+            cursor = cnx.cursor()
+            cursor.execute("SELECT * FROM produktai WHERE id = %s", (product_id,))
+            result = cursor.fetchone()
+            if result is not None:
+                return json.dumps(result)
+            else:
+                return "No product found."
+        except Exception as e:
+            return str(e)
+    elif request.method == "PUT":
+        json_data = request.json
+        errors = []
+        cursor = cnx.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM produktai WHERE id = %s", (product_id,))
+        result = cursor.fetchone()
+        if result is None:
+            errors.append("No product found with provided ID")
+        else:
+            if "name" not in json_data:
+                errors.append("Name is required")
+            else:
+                if type(json_data["name"]) != str:
+                    errors.append("Name must be a string")
+                else:
+                    if len(json_data["name"].strip()) == 0:
+                        errors.append("Name must not be empty")
+            if "description" not in json_data:
+                errors.append("Description is required")
+            else:
+                if type(json_data["description"]) != str:
+                    errors.append("Description must be a string")
+                else:
+                    if len(json_data["description"].strip()) == 0:
+                        errors.append("Description must not be empty")
+            if "image_url" not in json_data:
+                errors.append("Image URL is required")
+            else:
+                if type(json_data["image_url"]) != str:
+                    errors.append("Image URL must be a string")
+                else:
+                    if len(json_data["image_url"].strip()) == 0:
+                        errors.append("Image URL must not be empty")
+            if "manufacturer" not in json_data:
+                errors.append("Manufacturer is required")
+            else:
+                if type(json_data["manufacturer"]) != str:
+                    errors.append("Manufacturer must be a string")
+                else:
+                    if len(json_data["manufacturer"].strip()) == 0:
+                        errors.append("Manufacturer must not be empty")
+            if "product_url" not in json_data:
+                errors.append("Product URL is required")
+            else:
+                if type(json_data["product_url"]) != str:
+                    errors.append("Product URL must be a string")
+                else:
+                    if len(json_data["product_url"].strip()) == 0:
+                        errors.append("Product URL must not be empty")
+        if len(errors) == 0:
+            try:
+                cursor.execute("UPDATE `produktai` SET `pavadinimas`=%s, `aprasymas`=%s, `paveiksliukas`=%s, `gamintojas`=%s, `produkto_puslapis`=%s WHERE `id` = %s", (json_data["name"].strip(), json_data["description"], json_data["image_url"], json_data["manufacturer"], json_data["product_url"], product_id))
+                cnx.commit()
+                return json.dumps(result)
+            except Exception as e:
+                return str(e)
+        else:
+            return errors
+    elif request.method == "DELETE":
+        try:
+            cursor = cnx.cursor()
+            cursor.execute("DELETE FROM produktai WHERE id = %s", (product_id,))
+            cnx.commit()
+            if cursor.rowcount == 0:
+                return "No category found with provided ID"
+            else:
+                return "Removed category successfully"
+        except Exception as e:
+            return str(e)
+    else:
+        return "Bad method"
+
+
 @app.route("/categories/", methods=["GET", "POST"])
 def handle_categories_one():
     if request.method == "GET":
