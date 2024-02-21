@@ -97,7 +97,7 @@ def handle_products_one():
 def handle_products_two(product_id):
     if request.method == "GET":
         try:
-            cursor = cnx.cursor()
+            cursor = cnx.cursor(dictionary=True)
             cursor.execute("SELECT * FROM produktai WHERE id = %s", (product_id,))
             result = cursor.fetchone()
             cursor.close()
@@ -252,7 +252,7 @@ def handle_categories_one():
 def handle_categories_two(category_id):
     if request.method == "GET":
         try:
-            cursor = cnx.cursor()
+            cursor = cnx.cursor(dictionary=True)
             cursor.execute("SELECT * FROM kategorijos WHERE id = %s", (category_id,))
             result = cursor.fetchone()
             cursor.close()
@@ -375,7 +375,7 @@ def handle_choices_one():
 def handle_choices_two(choice_id):
     if request.method == "GET":
         try:
-            cursor = cnx.cursor()
+            cursor = cnx.cursor(dictionary=True)
             cursor.execute("SELECT * FROM pasirinkimai WHERE id = %s", (choice_id,))
             result = cursor.fetchone()
             cursor.close()
@@ -448,7 +448,7 @@ def handle_choices_two(choice_id):
 def handle_category_choices_one():
     if request.method == "GET":
         try:
-            cursor = cnx.cursor()
+            cursor = cnx.cursor(dictionary=True)
             cursor.execute("SELECT * FROM kategorijospasirinkimai")
             result = cursor.fetchall()
             cursor.close()
