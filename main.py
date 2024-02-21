@@ -11,22 +11,6 @@ cnx = mysql.connector.connect(
 app = Flask(__name__)
 
 
-@app.route("/")
-def hello_world():
-    cursor = cnx.cursor()
-    query = ("INSERT INTO kategorijos"
-             "(pavadinimas)"
-             "VALUES (%s)")
-    try:
-        cursor.execute(query, ("kategorija",))
-        cnx.commit()
-        cursor.close()
-        return "Prideta nauja kategorija"
-    except Exception as e:
-        cursor.close()
-        return str(e)
-
-
 @app.route("/products/", methods=["GET", "POST"])
 def handle_products_one():
     if request.method == "GET":
