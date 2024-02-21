@@ -115,8 +115,8 @@ def handle_products_two(product_id):
         try:
             cursor = cnx.cursor()
             cursor.execute("SELECT * FROM produktai WHERE id = %s", (product_id,))
-            cursor.close()
             result = cursor.fetchone()
+            cursor.close()
             if result is not None:
                 return json.dumps(result)
             else:
@@ -126,9 +126,13 @@ def handle_products_two(product_id):
     elif request.method == "PUT":
         json_data = request.json
         errors = []
-        cursor = cnx.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM produktai WHERE id = %s", (product_id,))
-        result = cursor.fetchone()
+        try:
+            cursor = cnx.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM produktai WHERE id = %s", (product_id,))
+            result = cursor.fetchone()
+            cursor.close()
+        except Exception as e:
+            return str(e)
         if result is None:
             errors.append("No product found with provided ID")
         else:
@@ -142,12 +146,13 @@ def handle_products_two(product_id):
                         errors.append("Name must not be empty")
                     else:
                         try:
+                            cursor = cnx.cursor(dictionary=True)
                             cursor.execute("SELECT * FROM produktai WHERE `pavadinimas`=%s", (json_data["name"],))
                             result = cursor.fetchone()
+                            cursor.close()
                             if result is not None and result["id"] != product_id:
                                 errors.append("A product with the provided name already exists")
                         except Exception as e:
-                            cursor.close()
                             return str(e)
             if "description" not in json_data:
                 errors.append("Description is required")
@@ -183,25 +188,25 @@ def handle_products_two(product_id):
                         errors.append("Product URL must not be empty")
         if len(errors) == 0:
             try:
+                cursor = cnx.cursor()
                 cursor.execute("UPDATE `produktai` SET `pavadinimas`=%s, `aprasymas`=%s, `paveiksliukas`=%s, `gamintojas`=%s, `produkto_puslapis`=%s WHERE `id` = %s", (json_data["name"].strip(), json_data["description"].strip(), json_data["image_url"].strip(), json_data["manufacturer"].strip(), json_data["product_url"].strip(), product_id))
                 cursor.close()
                 cnx.commit()
                 return "Successfully updated product."
             except Exception as e:
-                cursor.close()
                 return str(e)
         else:
-            cursor.close()
             return errors
     elif request.method == "DELETE":
         try:
             cursor = cnx.cursor()
             cursor.execute("DELETE FROM produktai WHERE id = %s", (product_id,))
-            cursor.close()
             cnx.commit()
             if cursor.rowcount == 0:
+                cursor.close()
                 return "No product found with provided ID"
             else:
+                cursor.close()
                 return "Removed product successfully"
         except Exception as e:
             return str(e)
@@ -234,13 +239,23 @@ def handle_categories_one():
             else:
                 if len(json_data["name"].strip()) == 0:
                     errors.append("Name must not be empty")
+                else:
+                    try:
+                        cursor = cnx.cursor(dictionary=True)
+                        cursor.execute("SELECT * FROM kategorijos WHERE `pavadinimas`=%s", (json_data["name"],))
+                        result = cursor.fetchone()
+                        cursor.close()
+                        if result is not None:
+                            errors.append("A category with the provided name already exists")
+                    except Exception as e:
+                        return str(e)
         if len(errors) == 0:
             try:
                 cursor = cnx.cursor()
-                cursor.execute(query, (json_data["name"],))
+                cursor.execute(query, (json_data["name"].strip(),))
                 cnx.commit()
                 cursor.close()
-                return json.dumps(json_data)
+                return "Successfully created category."
             except Exception as e:
                 return str(e)
         else:
@@ -256,6 +271,7 @@ def handle_categories_two(category_id):
             cursor = cnx.cursor()
             cursor.execute("SELECT * FROM kategorijos WHERE id = %s", (category_id,))
             result = cursor.fetchone()
+            cursor.close()
             if result is not None:
                 return json.dumps(result)
             else:
@@ -265,9 +281,13 @@ def handle_categories_two(category_id):
     elif request.method == "PUT":
         data = request.json
         errors = []
-        cursor = cnx.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM kategorijos WHERE id = %s", (category_id,))
-        result = cursor.fetchone()
+        try:
+            cursor = cnx.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM kategorijos WHERE id = %s", (category_id,))
+            result = cursor.fetchone()
+            cursor.close()
+        except Exception as e:
+            return str(e)
         if result is None:
             errors.append("No category found with provided ID")
         else:
@@ -277,22 +297,41 @@ def handle_categories_two(category_id):
                 else:
                     if data["name"].strip() == "":
                         errors.append("Name must not be empty")
+                    else:
+                        try:
+                            cursor = cnx.cursor(dictionary=True)
+                            cursor.execute("SELECT * FROM kategorijos WHERE `pavadinimas`=%s", (data["name"],))
+                            result = cursor.fetchone()
+                            cursor.close()
+                            if result is not None and result["id"] != category_id:
+                                errors.append("A category with the provided name already exists")
+                        except Exception as e:
+                            return str(e)
             else:
                 errors.append("No name provided")
         if len(errors) == 0:
-            cursor.execute("UPDATE `kategorijos` SET `pavadinimas`=%s WHERE `id` = %s", (data["name"].strip(), category_id))
-            cnx.commit()
-            result["pavadinimas"] = data["name"].strip()
-            return json.dumps(result)
+            try:
+                cursor = cnx.cursor(dictionary=True)
+                cursor.execute("UPDATE `kategorijos` SET `pavadinimas`=%s WHERE `id` = %s", (data["name"].strip(), category_id))
+                cnx.commit()
+                cursor.close()
+                return "Successfully updated category"
+            except Exception as e:
+                return str(e)
         else:
             return errors
     elif request.method == "DELETE":
-        cursor = cnx.cursor()
-        cursor.execute("DELETE FROM kategorijos WHERE id = %s", (category_id,))
-        cnx.commit()
+        try:
+            cursor = cnx.cursor()
+            cursor.execute("DELETE FROM kategorijos WHERE id = %s", (category_id,))
+            cnx.commit()
+        except Exception as e:
+            return str(e)
         if cursor.rowcount == 0:
+            cursor.close()
             return "No category found with provided ID"
         else:
+            cursor.close()
             return "Removed category successfully"
     else:
         return "Bad method"
@@ -380,8 +419,10 @@ def handle_choices_two(choice_id):
         cursor.execute("DELETE FROM pasirinkimai WHERE id = %s", (choice_id,))
         cnx.commit()
         if cursor.rowcount == 0:
+            cursor.close()
             return "No choice found with provided ID"
         else:
+            cursor.close()
             return "Removed choice successfully"
     else:
         return "Bad method"
@@ -445,19 +486,21 @@ def handle_category_choices_two(category_id):
         cursor = cnx.cursor(dictionary=True)
         cursor.execute("SELECT * FROM kategorijospasirinkimai WHERE kategorijosId = %s", (category_id,))
         result = cursor.fetchall()
-        cursor.close()
         if cursor.rowcount == 0:
+            cursor.close()
             return "No category choices found with provided category ID"
         else:
+            cursor.close()
             return json.dumps(result)
     elif request.method == "DELETE":
         cursor = cnx.cursor(dictionary=True)
         cursor.execute("DELETE FROM kategorijospasirinkimai WHERE kategorijosId = %s", (category_id,))
         cnx.commit()
-        cursor.close()
         if cursor.rowcount > 0:
+            cursor.close()
             return "Successfully deleted all rows with provided category ID: " + str(cursor.rowcount) + " rows affected."
         else:
+            cursor.close()
             return "No category choices records found with provided category ID"
     else:
         return "Bad method"
@@ -499,10 +542,11 @@ def handle_category_choices_three(category_id, choice_id):
         cursor = cnx.cursor(dictionary=True)
         cursor.execute("DELETE FROM kategorijospasirinkimai WHERE (kategorijosId = %s AND pasirinkimoId = %s)", (category_id, choice_id))
         cnx.commit()
-        cursor.close()
         if cursor.rowcount > 0:
+            cursor.close()
             return "Successfully deleted choice on category."
         else:
+            cursor.close()
             return "No choice with provided ID on category with provided ID found."
     else:
         return "Bad method"
