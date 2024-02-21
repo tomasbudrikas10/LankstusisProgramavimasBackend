@@ -1,32 +1,31 @@
 from flask import Flask, request
-from product import Product
-from category import Category
-from choice import Choice
-from category_choices import CategoryChoices
-from product_category_choices import ProductCategoryChoices
+import json
+import mysql.connector
+cnx = mysql.connector.connect(
+    host="127.0.0.1",
+    port=3306,
+    user="root",
+    password="",
+    database="mydb")
 
 app = Flask(__name__)
 
-products = [Product(1, "Produktas A"), Product(2, "Produktas B"), Product(3, "Produktas C")]
-categories = [Category(1, "Kategorija A"), Category(2, "Kategorija B"), Category(3, "Kategorija C")]
-# Kategorijos ID, egzistuojančių pasirinkimų kategorijoje ID sąrašas
-category_choices_arr = [CategoryChoices(1, [1, 2]), CategoryChoices(2, [2, 3]), CategoryChoices(3, [1, 3])]
-choices = [Choice(1, "Pasirinkimas A"), Choice(2, "Pasirinkimas B"), Choice(3, "Pasirinkimas C")]
-# Produkto ID, Kategorijos ID, Produkto tenkinami pasirinkimai iš nurodytos kategorijos
-product_categories_choices = [ProductCategoryChoices(1, 1, [1, 2]), ProductCategoryChoices(2, 2, [3]),
-                              ProductCategoryChoices(3, 3, [1])]
 
-
-@app.route("/")
-def hello_world():
-    return f"<p>Hello World!</p>"
-
-
-@app.route("/choices/", methods=["GET", "POST"])
-def handle_choices_one():
+@app.route("/products/", methods=["GET", "POST"])
+def handle_products_one():
     if request.method == "GET":
-        return Choice.serialize_array(choices)
+        try:
+            cursor = cnx.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM produktai")
+            rows = cursor.fetchall()
+            cursor.close()
+            return json.dumps(rows)
+        except Exception as e:
+            return str(e)
     elif request.method == "POST":
+        query = ("INSERT INTO produktai"
+                 "(pavadinimas, aprasymas, paveiksliukas, gamintojas, produkto_puslapis)"
+                 "VALUES (%s, %s, %s, %s, %s)")
         json_data = request.json
         errors = []
         if "name" not in json_data:
@@ -37,15 +36,335 @@ def handle_choices_one():
             else:
                 if len(json_data["name"].strip()) == 0:
                     errors.append("Name must not be empty")
+                else:
+                    try:
+                        cursor = cnx.cursor(dictionary=True)
+                        cursor.execute("SELECT * FROM produktai WHERE `pavadinimas`=%s", (json_data["name"],))
+                        result = cursor.fetchone()
+                        cursor.close()
+                        if result is not None:
+                            errors.append("A product with the provided name already exists")
+                    except Exception as e:
+                        return str(e)
+        if "description" not in json_data:
+            errors.append("Description is required")
+        else:
+            if type(json_data["description"]) != str:
+                errors.append("Description must be a string")
+            else:
+                if len(json_data["description"].strip()) == 0:
+                    errors.append("Description must not be empty")
+        if "image_url" not in json_data:
+            errors.append("Image URL is required")
+        else:
+            if type(json_data["image_url"]) != str:
+                errors.append("Image URL must be a string")
+            else:
+                if len(json_data["image_url"].strip()) == 0:
+                    errors.append("Image URL must not be empty")
+        if "manufacturer" not in json_data:
+            errors.append("Manufacturer is required")
+        else:
+            if type(json_data["manufacturer"]) != str:
+                errors.append("Manufacturer must be a string")
+            else:
+                if len(json_data["manufacturer"].strip()) == 0:
+                    errors.append("Manufacturer must not be empty")
+        if "product_url" not in json_data:
+            errors.append("Product URL is required")
+        else:
+            if type(json_data["product_url"]) != str:
+                errors.append("Product URL must be a string")
+            else:
+                if len(json_data["product_url"].strip()) == 0:
+                    errors.append("Product URL must not be empty")
         if len(errors) == 0:
-            highest_id = 0
-            for choice in choices:
-                if choice.id > highest_id:
-                    highest_id = choice.id
+            try:
+                cursor = cnx.cursor()
+                cursor.execute(query, (json_data["name"].strip(), json_data["description"].strip(), json_data["image_url"].strip(), json_data["manufacturer"].strip(), json_data["product_url"].strip()))
+                cnx.commit()
+                cursor.close()
+                return "Successfully created product."
+            except Exception as e:
+                return str(e)
+        else:
+            return errors
+    else:
+        return "Bad method"
 
-            choice = Choice(highest_id + 1, json_data["name"])
-            choices.append(choice)
-            return choice.serialize()
+
+@app.route("/products/<int:product_id>", methods=["GET", "PUT", "DELETE"])
+def handle_products_two(product_id):
+    if request.method == "GET":
+        try:
+            cursor = cnx.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM produktai WHERE id = %s", (product_id,))
+            result = cursor.fetchone()
+            cursor.close()
+            if result is not None:
+                return json.dumps(result)
+            else:
+                return "No product found."
+        except Exception as e:
+            return str(e)
+    elif request.method == "PUT":
+        json_data = request.json
+        errors = []
+        try:
+            cursor = cnx.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM produktai WHERE id = %s", (product_id,))
+            result = cursor.fetchone()
+            cursor.close()
+        except Exception as e:
+            return str(e)
+        if result is None:
+            errors.append("No product found with provided ID")
+        else:
+            if "name" not in json_data:
+                errors.append("Name is required")
+            else:
+                if type(json_data["name"]) != str:
+                    errors.append("Name must be a string")
+                else:
+                    if len(json_data["name"].strip()) == 0:
+                        errors.append("Name must not be empty")
+                    else:
+                        try:
+                            cursor = cnx.cursor(dictionary=True)
+                            cursor.execute("SELECT * FROM produktai WHERE `pavadinimas`=%s", (json_data["name"],))
+                            result = cursor.fetchone()
+                            cursor.close()
+                            if result is not None and result["id"] != product_id:
+                                errors.append("A product with the provided name already exists")
+                        except Exception as e:
+                            return str(e)
+            if "description" not in json_data:
+                errors.append("Description is required")
+            else:
+                if type(json_data["description"]) != str:
+                    errors.append("Description must be a string")
+                else:
+                    if len(json_data["description"].strip()) == 0:
+                        errors.append("Description must not be empty")
+            if "image_url" not in json_data:
+                errors.append("Image URL is required")
+            else:
+                if type(json_data["image_url"]) != str:
+                    errors.append("Image URL must be a string")
+                else:
+                    if len(json_data["image_url"].strip()) == 0:
+                        errors.append("Image URL must not be empty")
+            if "manufacturer" not in json_data:
+                errors.append("Manufacturer is required")
+            else:
+                if type(json_data["manufacturer"]) != str:
+                    errors.append("Manufacturer must be a string")
+                else:
+                    if len(json_data["manufacturer"].strip()) == 0:
+                        errors.append("Manufacturer must not be empty")
+            if "product_url" not in json_data:
+                errors.append("Product URL is required")
+            else:
+                if type(json_data["product_url"]) != str:
+                    errors.append("Product URL must be a string")
+                else:
+                    if len(json_data["product_url"].strip()) == 0:
+                        errors.append("Product URL must not be empty")
+        if len(errors) == 0:
+            try:
+                cursor = cnx.cursor()
+                cursor.execute("UPDATE `produktai` SET `pavadinimas`=%s, `aprasymas`=%s, `paveiksliukas`=%s, `gamintojas`=%s, `produkto_puslapis`=%s WHERE `id` = %s", (json_data["name"].strip(), json_data["description"].strip(), json_data["image_url"].strip(), json_data["manufacturer"].strip(), json_data["product_url"].strip(), product_id))
+                cursor.close()
+                cnx.commit()
+                return "Successfully updated product."
+            except Exception as e:
+                return str(e)
+        else:
+            return errors
+    elif request.method == "DELETE":
+        try:
+            cursor = cnx.cursor()
+            cursor.execute("DELETE FROM produktai WHERE id = %s", (product_id,))
+            cnx.commit()
+            if cursor.rowcount == 0:
+                cursor.close()
+                return "No product found with provided ID"
+            else:
+                cursor.close()
+                return "Removed product successfully"
+        except Exception as e:
+            return str(e)
+    else:
+        return "Bad method"
+
+
+@app.route("/categories/", methods=["GET", "POST"])
+def handle_categories_one():
+    if request.method == "GET":
+        try:
+            cursor = cnx.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM kategorijos")
+            rows = cursor.fetchall()
+            cursor.close()
+            return json.dumps(rows)
+        except Exception as e:
+            return str(e)
+    elif request.method == "POST":
+        query = ("INSERT INTO kategorijos"
+                 "(pavadinimas)"
+                 "VALUES (%s)")
+        json_data = request.json
+        errors = []
+        if "name" not in json_data:
+            errors.append("Name is required")
+        else:
+            if type(json_data["name"]) != str:
+                errors.append("Name must be a string")
+            else:
+                if len(json_data["name"].strip()) == 0:
+                    errors.append("Name must not be empty")
+                else:
+                    try:
+                        cursor = cnx.cursor(dictionary=True)
+                        cursor.execute("SELECT * FROM kategorijos WHERE `pavadinimas`=%s", (json_data["name"],))
+                        result = cursor.fetchone()
+                        cursor.close()
+                        if result is not None:
+                            errors.append("A category with the provided name already exists")
+                    except Exception as e:
+                        return str(e)
+        if len(errors) == 0:
+            try:
+                cursor = cnx.cursor()
+                cursor.execute(query, (json_data["name"].strip(),))
+                cnx.commit()
+                cursor.close()
+                return "Successfully created category."
+            except Exception as e:
+                return str(e)
+        else:
+            return errors
+    else:
+        return "Bad method"
+
+
+@app.route("/categories/<int:category_id>", methods=["GET", "PUT", "DELETE"])
+def handle_categories_two(category_id):
+    if request.method == "GET":
+        try:
+            cursor = cnx.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM kategorijos WHERE id = %s", (category_id,))
+            result = cursor.fetchone()
+            cursor.close()
+            if result is not None:
+                return json.dumps(result)
+            else:
+                return "No category found."
+        except Exception as e:
+            return str(e)
+    elif request.method == "PUT":
+        data = request.json
+        errors = []
+        try:
+            cursor = cnx.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM kategorijos WHERE id = %s", (category_id,))
+            result = cursor.fetchone()
+            cursor.close()
+        except Exception as e:
+            return str(e)
+        if result is None:
+            errors.append("No category found with provided ID")
+        else:
+            if "name" in data:
+                if type(data["name"]) != str:
+                    errors.append("Name must be a string")
+                else:
+                    if data["name"].strip() == "":
+                        errors.append("Name must not be empty")
+                    else:
+                        try:
+                            cursor = cnx.cursor(dictionary=True)
+                            cursor.execute("SELECT * FROM kategorijos WHERE `pavadinimas`=%s", (data["name"],))
+                            result = cursor.fetchone()
+                            cursor.close()
+                            if result is not None and result["id"] != category_id:
+                                errors.append("A category with the provided name already exists")
+                        except Exception as e:
+                            return str(e)
+            else:
+                errors.append("No name provided")
+        if len(errors) == 0:
+            try:
+                cursor = cnx.cursor(dictionary=True)
+                cursor.execute("UPDATE `kategorijos` SET `pavadinimas`=%s WHERE `id` = %s", (data["name"].strip(), category_id))
+                cnx.commit()
+                cursor.close()
+                return "Successfully updated category"
+            except Exception as e:
+                return str(e)
+        else:
+            return errors
+    elif request.method == "DELETE":
+        try:
+            cursor = cnx.cursor()
+            cursor.execute("DELETE FROM kategorijos WHERE id = %s", (category_id,))
+            cnx.commit()
+        except Exception as e:
+            return str(e)
+        if cursor.rowcount == 0:
+            cursor.close()
+            return "No category found with provided ID"
+        else:
+            cursor.close()
+            return "Removed category successfully"
+    else:
+        return "Bad method"
+
+
+@app.route("/choices/", methods=["GET", "POST"])
+def handle_choices_one():
+    if request.method == "GET":
+        try:
+            cursor = cnx.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM pasirinkimai")
+            rows = cursor.fetchall()
+            cursor.close()
+            return json.dumps(rows)
+        except Exception as e:
+            return str(e)
+    elif request.method == "POST":
+        query = ("INSERT INTO pasirinkimai"
+                 "(pavadinimas)"
+                 "VALUES (%s)")
+        json_data = request.json
+        errors = []
+        if "name" not in json_data:
+            errors.append("Name is required")
+        else:
+            if type(json_data["name"]) != str:
+                errors.append("Name must be a string")
+            else:
+                if len(json_data["name"].strip()) == 0:
+                    errors.append("Name must not be empty")
+                else:
+                    try:
+                        cursor = cnx.cursor(dictionary=True)
+                        cursor.execute("SELECT * FROM pasirinkimai WHERE `pavadinimas`=%s", (json_data["name"],))
+                        result = cursor.fetchone()
+                        cursor.close()
+                        if result is not None:
+                            errors.append("A choice with the provided name already exists")
+                    except Exception as e:
+                        return str(e)
+        if len(errors) == 0:
+            try:
+                cursor = cnx.cursor()
+                cursor.execute(query, (json_data["name"].strip(),))
+                cnx.commit()
+                cursor.close()
+                return "Successfully created choice."
+            except Exception as e:
+                return str(e)
         else:
             return errors
     else:
@@ -55,19 +374,28 @@ def handle_choices_one():
 @app.route("/choices/<int:choice_id>", methods=["GET", "PUT", "DELETE"])
 def handle_choices_two(choice_id):
     if request.method == "GET":
-        result = "No choice found"
-        for choice in choices:
-            if choice.id == choice_id:
-                result = choice.serialize()
-        return result
+        try:
+            cursor = cnx.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM pasirinkimai WHERE id = %s", (choice_id,))
+            result = cursor.fetchone()
+            cursor.close()
+            if result is not None:
+                return json.dumps(result)
+            else:
+                return "No choice found."
+        except Exception as e:
+            return str(e)
     elif request.method == "PUT":
         data = request.json
         errors = []
-        choice_by_id = ()
-        for choice in choices:
-            if choice.id == choice_id:
-                choice_by_id = choice
-        if choice_by_id == ():
+        try:
+            cursor = cnx.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM pasirinkimai WHERE id = %s", (choice_id,))
+            result = cursor.fetchone()
+            cursor.close()
+        except Exception as e:
+            return str(e)
+        if result is None:
             errors.append("No choice found with provided ID")
         else:
             if "name" in data:
@@ -76,20 +404,42 @@ def handle_choices_two(choice_id):
                 else:
                     if data["name"].strip() == "":
                         errors.append("Name must not be empty")
+                    else:
+                        try:
+                            cursor = cnx.cursor(dictionary=True)
+                            cursor.execute("SELECT * FROM pasirinkimai WHERE `pavadinimas`=%s", (data["name"],))
+                            result = cursor.fetchone()
+                            cursor.close()
+                            if result is not None and result["id"] != choice_id:
+                                errors.append("A choice with the provided name already exists")
+                        except Exception as e:
+                            return str(e)
             else:
                 errors.append("No name provided")
         if len(errors) == 0:
-            choice_by_id.name = data["name"].strip()
-            return choice_by_id.serialize()
+            try:
+                cursor = cnx.cursor(dictionary=True)
+                cursor.execute("UPDATE `pasirinkimai` SET `pavadinimas`=%s WHERE `id` = %s", (data["name"].strip(), choice_id))
+                cursor.close()
+                cnx.commit()
+                return "Successfully updated choice."
+            except Exception as e:
+                return str(e)
         else:
             return errors
     elif request.method == "DELETE":
-        for choice in choices:
-            if choice.id == choice_id:
-                index = choices.index(choice)
-                choices.pop(index)
-                return "Removed choice successfully"
-        return "No choice found with provided ID"
+        try:
+            cursor = cnx.cursor()
+            cursor.execute("DELETE FROM pasirinkimai WHERE id = %s", (choice_id,))
+            cnx.commit()
+        except Exception as e:
+            return str(e)
+        if cursor.rowcount == 0:
+            cursor.close()
+            return "No choice found with provided ID"
+        else:
+            cursor.close()
+            return "Removed choice successfully"
     else:
         return "Bad method"
 
@@ -97,7 +447,14 @@ def handle_choices_two(choice_id):
 @app.route("/category_choices", methods=["GET", "POST"])
 def handle_category_choices_one():
     if request.method == "GET":
-        return CategoryChoices.serialize_array(category_choices_arr)
+        try:
+            cursor = cnx.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM kategorijospasirinkimai")
+            result = cursor.fetchall()
+            cursor.close()
+            return json.dumps(result)
+        except Exception as e:
+            return str(e)
     elif request.method == "POST":
         data = request.json
         errors = []
@@ -106,88 +463,139 @@ def handle_category_choices_one():
         elif type(data["category_id"]) != int:
             errors.append("Category ID must be an integer")
         else:
-            exists = False
-            for category in categories:
-                if category.id == data["category_id"]:
-                    exists = True
-            if exists:
-                alreadyCreated = False
-                for category_choices in category_choices_arr:
-                    if category_choices.category_id == data["category_id"]:
-                        alreadyCreated = True
-                if alreadyCreated:
-                    errors.append("Category with provided ID already has a choices record")
-            else:
-                errors.append("Category ID provided does not exist")
-
-        if "choice_ids" not in data:
-            errors.append("No choice IDs are provided")
+            try:
+                cursor = cnx.cursor()
+                cursor.execute("SELECT * FROM kategorijos WHERE id = %s", (data["category_id"],))
+                result = cursor.fetchone()
+                cursor.close()
+                if result is None:
+                    errors.append("Category with provided ID does not exist")
+            except Exception as e:
+                return str(e)
+        if "choice_id" not in data:
+            errors.append("No choice ID is provided")
+        elif type(data["choice_id"]) != int:
+            errors.append("Choice ID provided must be an integer")
         else:
-            if type(data["choice_ids"]) == list:
-                if len(data["choice_ids"]) == 0:
-                    errors.append("Choice IDs list must not be empty")
-                else:
-                    allInts = True
-                    for choice_id in data["choice_ids"]:
-                        if type(choice_id) != int:
-                            allInts = False
-                    if not allInts:
-                        errors.append("Choice IDs must be integers")
-            else:
-                errors.append("Choice IDs must be provided as a list")
-
+            try:
+                cursor = cnx.cursor()
+                cursor.execute("SELECT * FROM pasirinkimai WHERE id = %s", (data["choice_id"],))
+                result = cursor.fetchone()
+                cursor.close()
+                if result is None:
+                    errors.append("Choice with provided ID does not exist")
+            except Exception as e:
+                return str(e)
         if len(errors) > 0:
             return errors
         else:
-            category_choices = CategoryChoices(data["category_id"], data["choice_ids"])
-            category_choices_arr.append(category_choices)
-            return category_choices.serialize()
+            try:
+                cursor = cnx.cursor()
+                cursor.execute("SELECT * FROM kategorijospasirinkimai where (kategorijosId = %s AND pasirinkimoId = %s)", (data["category_id"], data["choice_id"]))
+                result = cursor.fetchone()
+                cursor.close()
+            except Exception as e:
+                return str(e)
+            if result is not None:
+                errors.append("Category already has this choice")
+                cursor.close()
+                return errors
+            else:
+                try:
+                    cursor = cnx.cursor()
+                    cursor.execute("INSERT INTO kategorijospasirinkimai (kategorijosId, pasirinkimoId) VALUES (%s, %s)", (data["category_id"], data["choice_id"]))
+                    cnx.commit()
+                    cursor.close()
+                    return "Successfully added choice to category"
+                except Exception as e:
+                    return str(e)
 
 
-@app.route("/category_choices/<int:category_id>", methods=["GET", "PUT", "DELETE"])
+@app.route("/category_choices/<int:category_id>", methods=["GET", "DELETE"])
 def handle_category_choices_two(category_id):
     if request.method == "GET":
-        for category_choices in category_choices_arr:
-            if category_choices.category_id == category_id:
-                return category_choices.serialize()
-        return "No category choices record found with provided category ID"
-    elif request.method == "PUT":
-        data = request.json
-        errors = []
-        current_category_choices = ()
-        for category_choices in category_choices_arr:
-            if category_choices.category_id == category_id:
-                current_category_choices = category_choices
-        if current_category_choices == ():
-            errors.append("No category choices record with provided category ID")
-        if "choice_ids" not in data:
-            errors.append("No choice IDs are provided")
+        try:
+            cursor = cnx.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM kategorijospasirinkimai WHERE kategorijosId = %s", (category_id,))
+            result = cursor.fetchall()
+        except Exception as e:
+            return str(e)
+        if cursor.rowcount == 0:
+            cursor.close()
+            return "No category choices found with provided category ID"
         else:
-            if type(data["choice_ids"]) == list:
-                if len(data["choice_ids"]) == 0:
-                    errors.append("Choice IDs list must not be empty")
-                else:
-                    allInts = True
-                    for choice_id in data["choice_ids"]:
-                        if type(choice_id) != int:
-                            allInts = False
-                    if not allInts:
-                        errors.append("Choice IDs must be integers")
-            else:
-                errors.append("Choice IDs must be provided as a list")
-
-        if len(errors) > 0:
-            return errors
-        else:
-            current_category_choices.choice_ids = data["choice_ids"]
-            return current_category_choices.serialize()
+            cursor.close()
+            return json.dumps(result)
     elif request.method == "DELETE":
-        for category_choices in category_choices_arr:
-            if category_choices.category_id == category_id:
-                index = category_choices_arr.index(category_choices)
-                category_choices_arr.pop(index)
-                return "Removed category choices record successfully"
-        return "No category choices record found with provided category ID"
+        try:
+            cursor = cnx.cursor(dictionary=True)
+            cursor.execute("DELETE FROM kategorijospasirinkimai WHERE kategorijosId = %s", (category_id,))
+            cnx.commit()
+        except Exception as e:
+            return str(e)
+        if cursor.rowcount > 0:
+            cursor.close()
+            return "Successfully deleted all rows with provided category ID: " + str(cursor.rowcount) + " rows affected."
+        else:
+            cursor.close()
+            return "No category choices records found with provided category ID"
+    else:
+        return "Bad method"
+
+
+@app.route("/category_choices/<int:category_id>/<int:choice_id>", methods=["PUT", "DELETE"])
+def handle_category_choices_three(category_id, choice_id):
+    if request.method == "PUT":
+        json_data = request.json
+        errs = []
+        if "choice_id" not in json_data:
+            errs.append("No new choice ID provided")
+        elif type(json_data["choice_id"]) != int:
+            errs.append("Choice ID must be an integer")
+        else:
+            try:
+                cursor = cnx.cursor()
+                cursor.execute("SELECT * FROM pasirinkimai WHERE id = %s", (json_data["choice_id"],))
+                result = cursor.fetchone()
+                cursor.close()
+            except Exception as e:
+                return str(e)
+            if result is not None:
+                try:
+                    cursor = cnx.cursor()
+                    cursor.execute("SELECT * FROM kategorijospasirinkimai WHERE (kategorijosId = %s AND pasirinkimoId = %s)", (category_id, json_data["choice_id"]))
+                    result2 = cursor.fetchone()
+                    cursor.close()
+                    if result2 is not None:
+                        errs.append("Can't change choice ID of this record to one that already exists on this category")
+                except Exception as e:
+                    return str(e)
+        if len(errs) > 0:
+            return errs
+        else:
+            try:
+                cursor = cnx.cursor()
+                cursor.execute(
+                    "UPDATE kategorijospasirinkimai SET pasirinkimoId = %s WHERE (kategorijosId = %s AND pasirinkimoId = %s)",
+                    (json_data["choice_id"], category_id, choice_id))
+                cnx.commit()
+                cursor.close()
+                return "Successfully updated choice ID"
+            except Exception as e:
+                return str(e)
+    elif request.method == "DELETE":
+        try:
+            cursor = cnx.cursor(dictionary=True)
+            cursor.execute("DELETE FROM kategorijospasirinkimai WHERE (kategorijosId = %s AND pasirinkimoId = %s)", (category_id, choice_id))
+            cnx.commit()
+            if cursor.rowcount > 0:
+                cursor.close()
+                return "Successfully deleted choice on category."
+            else:
+                cursor.close()
+                return "No choice with provided ID on category with provided ID found."
+        except Exception as e:
+            return str(e)
     else:
         return "Bad method"
 
