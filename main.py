@@ -362,13 +362,23 @@ def handle_choices_one():
             else:
                 if len(json_data["name"].strip()) == 0:
                     errors.append("Name must not be empty")
+                else:
+                    try:
+                        cursor = cnx.cursor(dictionary=True)
+                        cursor.execute("SELECT * FROM pasirinkimai WHERE `pavadinimas`=%s", (json_data["name"],))
+                        result = cursor.fetchone()
+                        cursor.close()
+                        if result is not None:
+                            errors.append("A choice with the provided name already exists")
+                    except Exception as e:
+                        return str(e)
         if len(errors) == 0:
             try:
                 cursor = cnx.cursor()
-                cursor.execute(query, (json_data["name"],))
+                cursor.execute(query, (json_data["name"].strip(),))
                 cnx.commit()
                 cursor.close()
-                return json.dumps(json_data)
+                return "Successfully created choice."
             except Exception as e:
                 return str(e)
         else:
@@ -384,6 +394,7 @@ def handle_choices_two(choice_id):
             cursor = cnx.cursor()
             cursor.execute("SELECT * FROM pasirinkimai WHERE id = %s", (choice_id,))
             result = cursor.fetchone()
+            cursor.close()
             if result is not None:
                 return json.dumps(result)
             else:
@@ -393,9 +404,13 @@ def handle_choices_two(choice_id):
     elif request.method == "PUT":
         data = request.json
         errors = []
-        cursor = cnx.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM pasirinkimai WHERE id = %s", (choice_id,))
-        result = cursor.fetchone()
+        try:
+            cursor = cnx.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM pasirinkimai WHERE id = %s", (choice_id,))
+            result = cursor.fetchone()
+            cursor.close()
+        except Exception as e:
+            return str(e)
         if result is None:
             errors.append("No choice found with provided ID")
         else:
@@ -405,19 +420,36 @@ def handle_choices_two(choice_id):
                 else:
                     if data["name"].strip() == "":
                         errors.append("Name must not be empty")
+                    else:
+                        try:
+                            cursor = cnx.cursor(dictionary=True)
+                            cursor.execute("SELECT * FROM pasirinkimai WHERE `pavadinimas`=%s", (data["name"],))
+                            result = cursor.fetchone()
+                            cursor.close()
+                            if result is not None and result["id"] != choice_id:
+                                errors.append("A choice with the provided name already exists")
+                        except Exception as e:
+                            return str(e)
             else:
                 errors.append("No name provided")
         if len(errors) == 0:
-            cursor.execute("UPDATE `pasirinkimai` SET `pavadinimas`=%s WHERE `id` = %s", (data["name"].strip(), choice_id))
-            cnx.commit()
-            result["pavadinimas"] = data["name"].strip()
-            return json.dumps(result)
+            try:
+                cursor = cnx.cursor(dictionary=True)
+                cursor.execute("UPDATE `pasirinkimai` SET `pavadinimas`=%s WHERE `id` = %s", (data["name"].strip(), choice_id))
+                cursor.close()
+                cnx.commit()
+                return "Successfully updated choice."
+            except Exception as e:
+                return str(e)
         else:
             return errors
     elif request.method == "DELETE":
-        cursor = cnx.cursor()
-        cursor.execute("DELETE FROM pasirinkimai WHERE id = %s", (choice_id,))
-        cnx.commit()
+        try:
+            cursor = cnx.cursor()
+            cursor.execute("DELETE FROM pasirinkimai WHERE id = %s", (choice_id,))
+            cnx.commit()
+        except Exception as e:
+            return str(e)
         if cursor.rowcount == 0:
             cursor.close()
             return "No choice found with provided ID"
