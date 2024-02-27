@@ -4,24 +4,25 @@ from flask import Flask, request
 import json
 import mysql.connector
 
-if os.environ.get("DATABASE_URL"):
-    cnx = mysql.connector.connect(
-        host=os.environ.get("DATABASE_URL"),
-        port=os.environ.get("DATABASE_PORT"),
-        user=os.environ.get("DATABASE_USER"),
-        password=os.environ.get("DATABASE_PASSWORD"),
-        database=os.environ.get("DATABASE_NAME")
-    )
-else:
-    with open("config.json", 'r') as file:
-        mysql_settings = json.load(file)
-    cnx = mysql.connector.connect(
-        host=mysql_settings["host"],
-        port=mysql_settings["port"],
-        user=mysql_settings["user"],
-        password=mysql_settings["password"],
-        database=mysql_settings["database"])
-
+def get_database_connection():
+    if os.environ.get("DATABASE_URL"):
+        cnx = mysql.connector.connect(
+            host=os.environ.get("DATABASE_URL"),
+            port=os.environ.get("DATABASE_PORT"),
+            user=os.environ.get("DATABASE_USER"),
+            password=os.environ.get("DATABASE_PASSWORD"),
+            database=os.environ.get("DATABASE_NAME"))
+        return cnx
+    else:
+        with open("config.json", 'r') as file:
+            mysql_settings = json.load(file)
+        cnx = mysql.connector.connect(
+            host=mysql_settings["host"],
+            port=mysql_settings["port"],
+            user=mysql_settings["user"],
+            password=mysql_settings["password"],
+            database=mysql_settings["database"])
+        return cnx
 
 app = Flask(__name__)
 
@@ -33,10 +34,12 @@ def index():
 def handle_products_one():
     if request.method == "GET":
         try:
+            cnx = get_database_connection()
             cursor = cnx.cursor(dictionary=True)
             cursor.execute("SELECT * FROM produktai")
             rows = cursor.fetchall()
             cursor.close()
+            cnx.close()
             return json.dumps(rows)
         except Exception as e:
             return str(e)
@@ -56,10 +59,12 @@ def handle_products_one():
                     errors.append("Name must not be empty")
                 else:
                     try:
+                        cnx = get_database_connection()
                         cursor = cnx.cursor(dictionary=True)
                         cursor.execute("SELECT * FROM produktai WHERE `pavadinimas`=%s", (json_data["name"],))
                         result = cursor.fetchone()
                         cursor.close()
+                        cnx.close()
                         if result is not None:
                             errors.append("A product with the provided name already exists")
                     except Exception as e:
@@ -98,10 +103,12 @@ def handle_products_one():
                     errors.append("Product URL must not be empty")
         if len(errors) == 0:
             try:
+                cnx = get_database_connection()
                 cursor = cnx.cursor()
                 cursor.execute(query, (json_data["name"].strip(), json_data["description"].strip(), json_data["image_url"].strip(), json_data["manufacturer"].strip(), json_data["product_url"].strip()))
                 cnx.commit()
                 cursor.close()
+                cnx.close()
                 return "Successfully created product."
             except Exception as e:
                 return str(e)
@@ -115,10 +122,12 @@ def handle_products_one():
 def handle_products_two(product_id):
     if request.method == "GET":
         try:
+            cnx = get_database_connection()
             cursor = cnx.cursor(dictionary=True)
             cursor.execute("SELECT * FROM produktai WHERE id = %s", (product_id,))
             result = cursor.fetchone()
             cursor.close()
+            cnx.close()
             if result is not None:
                 return json.dumps(result)
             else:
@@ -129,10 +138,12 @@ def handle_products_two(product_id):
         json_data = request.json
         errors = []
         try:
+            cnx = get_database_connection()
             cursor = cnx.cursor(dictionary=True)
             cursor.execute("SELECT * FROM produktai WHERE id = %s", (product_id,))
             result = cursor.fetchone()
             cursor.close()
+            cnx.close()
         except Exception as e:
             return str(e)
         if result is None:
@@ -148,10 +159,12 @@ def handle_products_two(product_id):
                         errors.append("Name must not be empty")
                     else:
                         try:
+                            cnx = get_database_connection()
                             cursor = cnx.cursor(dictionary=True)
                             cursor.execute("SELECT * FROM produktai WHERE `pavadinimas`=%s", (json_data["name"],))
                             result = cursor.fetchone()
                             cursor.close()
+                            cnx.close()
                             if result is not None and result["id"] != product_id:
                                 errors.append("A product with the provided name already exists")
                         except Exception as e:
@@ -190,10 +203,12 @@ def handle_products_two(product_id):
                         errors.append("Product URL must not be empty")
         if len(errors) == 0:
             try:
+                cnx = get_database_connection()
                 cursor = cnx.cursor()
                 cursor.execute("UPDATE `produktai` SET `pavadinimas`=%s, `aprasymas`=%s, `paveiksliukas`=%s, `gamintojas`=%s, `produkto_puslapis`=%s WHERE `id` = %s", (json_data["name"].strip(), json_data["description"].strip(), json_data["image_url"].strip(), json_data["manufacturer"].strip(), json_data["product_url"].strip(), product_id))
                 cursor.close()
                 cnx.commit()
+                cnx.close()
                 return "Successfully updated product."
             except Exception as e:
                 return str(e)
@@ -201,14 +216,17 @@ def handle_products_two(product_id):
             return errors
     elif request.method == "DELETE":
         try:
+            cnx = get_database_connection()
             cursor = cnx.cursor()
             cursor.execute("DELETE FROM produktai WHERE id = %s", (product_id,))
             cnx.commit()
             if cursor.rowcount == 0:
                 cursor.close()
+                cnx.close()
                 return "No product found with provided ID"
             else:
                 cursor.close()
+                cnx.close()
                 return "Removed product successfully"
         except Exception as e:
             return str(e)
@@ -220,10 +238,12 @@ def handle_products_two(product_id):
 def handle_categories_one():
     if request.method == "GET":
         try:
+            cnx = get_database_connection()
             cursor = cnx.cursor(dictionary=True)
             cursor.execute("SELECT * FROM kategorijos")
             rows = cursor.fetchall()
             cursor.close()
+            cnx.close()
             return json.dumps(rows)
         except Exception as e:
             return str(e)
@@ -243,20 +263,24 @@ def handle_categories_one():
                     errors.append("Name must not be empty")
                 else:
                     try:
+                        cnx = get_database_connection()
                         cursor = cnx.cursor(dictionary=True)
                         cursor.execute("SELECT * FROM kategorijos WHERE `pavadinimas`=%s", (json_data["name"],))
                         result = cursor.fetchone()
                         cursor.close()
+                        cnx.close()
                         if result is not None:
                             errors.append("A category with the provided name already exists")
                     except Exception as e:
                         return str(e)
         if len(errors) == 0:
             try:
+                cnx = get_database_connection()
                 cursor = cnx.cursor()
                 cursor.execute(query, (json_data["name"].strip(),))
                 cnx.commit()
                 cursor.close()
+                cnx.close()
                 return "Successfully created category."
             except Exception as e:
                 return str(e)
@@ -270,10 +294,12 @@ def handle_categories_one():
 def handle_categories_two(category_id):
     if request.method == "GET":
         try:
+            cnx = get_database_connection()
             cursor = cnx.cursor(dictionary=True)
             cursor.execute("SELECT * FROM kategorijos WHERE id = %s", (category_id,))
             result = cursor.fetchone()
             cursor.close()
+            cnx.close()
             if result is not None:
                 return json.dumps(result)
             else:
@@ -284,10 +310,12 @@ def handle_categories_two(category_id):
         data = request.json
         errors = []
         try:
+            cnx = get_database_connection()
             cursor = cnx.cursor(dictionary=True)
             cursor.execute("SELECT * FROM kategorijos WHERE id = %s", (category_id,))
             result = cursor.fetchone()
             cursor.close()
+            cnx.close()
         except Exception as e:
             return str(e)
         if result is None:
@@ -301,10 +329,12 @@ def handle_categories_two(category_id):
                         errors.append("Name must not be empty")
                     else:
                         try:
+                            cnx = get_database_connection()
                             cursor = cnx.cursor(dictionary=True)
                             cursor.execute("SELECT * FROM kategorijos WHERE `pavadinimas`=%s", (data["name"],))
                             result = cursor.fetchone()
                             cursor.close()
+                            cnx.close()
                             if result is not None and result["id"] != category_id:
                                 errors.append("A category with the provided name already exists")
                         except Exception as e:
@@ -313,10 +343,12 @@ def handle_categories_two(category_id):
                 errors.append("No name provided")
         if len(errors) == 0:
             try:
+                cnx = get_database_connection()
                 cursor = cnx.cursor(dictionary=True)
                 cursor.execute("UPDATE `kategorijos` SET `pavadinimas`=%s WHERE `id` = %s", (data["name"].strip(), category_id))
                 cnx.commit()
                 cursor.close()
+                cnx.close()
                 return "Successfully updated category"
             except Exception as e:
                 return str(e)
@@ -324,6 +356,7 @@ def handle_categories_two(category_id):
             return errors
     elif request.method == "DELETE":
         try:
+            cnx = get_database_connection()
             cursor = cnx.cursor()
             cursor.execute("DELETE FROM kategorijos WHERE id = %s", (category_id,))
             cnx.commit()
@@ -331,9 +364,11 @@ def handle_categories_two(category_id):
             return str(e)
         if cursor.rowcount == 0:
             cursor.close()
+            cnx.close()
             return "No category found with provided ID"
         else:
             cursor.close()
+            cnx.close()
             return "Removed category successfully"
     else:
         return "Bad method"
@@ -343,10 +378,12 @@ def handle_categories_two(category_id):
 def handle_choices_one():
     if request.method == "GET":
         try:
+            cnx = get_database_connection()
             cursor = cnx.cursor(dictionary=True)
             cursor.execute("SELECT * FROM pasirinkimai")
             rows = cursor.fetchall()
             cursor.close()
+            cnx.close()
             return json.dumps(rows)
         except Exception as e:
             return str(e)
@@ -366,20 +403,24 @@ def handle_choices_one():
                     errors.append("Name must not be empty")
                 else:
                     try:
+                        cnx = get_database_connection()
                         cursor = cnx.cursor(dictionary=True)
                         cursor.execute("SELECT * FROM pasirinkimai WHERE `pavadinimas`=%s", (json_data["name"],))
                         result = cursor.fetchone()
                         cursor.close()
+                        cnx.close()
                         if result is not None:
                             errors.append("A choice with the provided name already exists")
                     except Exception as e:
                         return str(e)
         if len(errors) == 0:
             try:
+                cnx = get_database_connection()
                 cursor = cnx.cursor()
                 cursor.execute(query, (json_data["name"].strip(),))
                 cnx.commit()
                 cursor.close()
+                cnx.close()
                 return "Successfully created choice."
             except Exception as e:
                 return str(e)
@@ -393,10 +434,12 @@ def handle_choices_one():
 def handle_choices_two(choice_id):
     if request.method == "GET":
         try:
+            cnx = get_database_connection()
             cursor = cnx.cursor(dictionary=True)
             cursor.execute("SELECT * FROM pasirinkimai WHERE id = %s", (choice_id,))
             result = cursor.fetchone()
             cursor.close()
+            cnx.close()
             if result is not None:
                 return json.dumps(result)
             else:
@@ -407,10 +450,12 @@ def handle_choices_two(choice_id):
         data = request.json
         errors = []
         try:
+            cnx = get_database_connection()
             cursor = cnx.cursor(dictionary=True)
             cursor.execute("SELECT * FROM pasirinkimai WHERE id = %s", (choice_id,))
             result = cursor.fetchone()
             cursor.close()
+            cnx.close()
         except Exception as e:
             return str(e)
         if result is None:
@@ -424,10 +469,12 @@ def handle_choices_two(choice_id):
                         errors.append("Name must not be empty")
                     else:
                         try:
+                            cnx = get_database_connection()
                             cursor = cnx.cursor(dictionary=True)
                             cursor.execute("SELECT * FROM pasirinkimai WHERE `pavadinimas`=%s", (data["name"],))
                             result = cursor.fetchone()
                             cursor.close()
+                            cnx.close()
                             if result is not None and result["id"] != choice_id:
                                 errors.append("A choice with the provided name already exists")
                         except Exception as e:
@@ -436,10 +483,12 @@ def handle_choices_two(choice_id):
                 errors.append("No name provided")
         if len(errors) == 0:
             try:
+                cnx = get_database_connection()
                 cursor = cnx.cursor(dictionary=True)
                 cursor.execute("UPDATE `pasirinkimai` SET `pavadinimas`=%s WHERE `id` = %s", (data["name"].strip(), choice_id))
                 cursor.close()
                 cnx.commit()
+                cnx.close()
                 return "Successfully updated choice."
             except Exception as e:
                 return str(e)
@@ -447,6 +496,7 @@ def handle_choices_two(choice_id):
             return errors
     elif request.method == "DELETE":
         try:
+            cnx = get_database_connection()
             cursor = cnx.cursor()
             cursor.execute("DELETE FROM pasirinkimai WHERE id = %s", (choice_id,))
             cnx.commit()
@@ -454,9 +504,11 @@ def handle_choices_two(choice_id):
             return str(e)
         if cursor.rowcount == 0:
             cursor.close()
+            cnx.close()
             return "No choice found with provided ID"
         else:
             cursor.close()
+            cnx.close()
             return "Removed choice successfully"
     else:
         return "Bad method"
@@ -466,10 +518,12 @@ def handle_choices_two(choice_id):
 def handle_category_choices_one():
     if request.method == "GET":
         try:
+            cnx = get_database_connection()
             cursor = cnx.cursor(dictionary=True)
             cursor.execute("SELECT * FROM kategorijospasirinkimai")
             result = cursor.fetchall()
             cursor.close()
+            cnx.close()
             return json.dumps(result)
         except Exception as e:
             return str(e)
@@ -482,10 +536,12 @@ def handle_category_choices_one():
             errors.append("Category ID must be an integer")
         else:
             try:
+                cnx = get_database_connection()
                 cursor = cnx.cursor()
                 cursor.execute("SELECT * FROM kategorijos WHERE id = %s", (data["category_id"],))
                 result = cursor.fetchone()
                 cursor.close()
+                cnx.close()
                 if result is None:
                     errors.append("Category with provided ID does not exist")
             except Exception as e:
@@ -496,10 +552,12 @@ def handle_category_choices_one():
             errors.append("Choice ID provided must be an integer")
         else:
             try:
+                cnx = get_database_connection()
                 cursor = cnx.cursor()
                 cursor.execute("SELECT * FROM pasirinkimai WHERE id = %s", (data["choice_id"],))
                 result = cursor.fetchone()
                 cursor.close()
+                cnx.close()
                 if result is None:
                     errors.append("Choice with provided ID does not exist")
             except Exception as e:
@@ -508,22 +566,27 @@ def handle_category_choices_one():
             return errors
         else:
             try:
+                cnx = get_database_connection()
                 cursor = cnx.cursor()
                 cursor.execute("SELECT * FROM kategorijospasirinkimai where (kategorijosId = %s AND pasirinkimoId = %s)", (data["category_id"], data["choice_id"]))
                 result = cursor.fetchone()
                 cursor.close()
+                cnx.close()
             except Exception as e:
                 return str(e)
             if result is not None:
                 errors.append("Category already has this choice")
                 cursor.close()
+                cnx.close()
                 return errors
             else:
                 try:
+                    cnx = get_database_connection()
                     cursor = cnx.cursor()
                     cursor.execute("INSERT INTO kategorijospasirinkimai (kategorijosId, pasirinkimoId) VALUES (%s, %s)", (data["category_id"], data["choice_id"]))
                     cnx.commit()
                     cursor.close()
+                    cnx.close()
                     return "Successfully added choice to category"
                 except Exception as e:
                     return str(e)
@@ -533,6 +596,7 @@ def handle_category_choices_one():
 def handle_category_choices_two(category_id):
     if request.method == "GET":
         try:
+            cnx = get_database_connection()
             cursor = cnx.cursor(dictionary=True)
             cursor.execute("SELECT * FROM kategorijospasirinkimai WHERE kategorijosId = %s", (category_id,))
             result = cursor.fetchall()
@@ -540,12 +604,15 @@ def handle_category_choices_two(category_id):
             return str(e)
         if cursor.rowcount == 0:
             cursor.close()
+            cnx.close()
             return "No category choices found with provided category ID"
         else:
             cursor.close()
+            cnx.close()
             return json.dumps(result)
     elif request.method == "DELETE":
         try:
+            cnx = get_database_connection()
             cursor = cnx.cursor(dictionary=True)
             cursor.execute("DELETE FROM kategorijospasirinkimai WHERE kategorijosId = %s", (category_id,))
             cnx.commit()
@@ -553,9 +620,11 @@ def handle_category_choices_two(category_id):
             return str(e)
         if cursor.rowcount > 0:
             cursor.close()
+            cnx.close()
             return "Successfully deleted all rows with provided category ID: " + str(cursor.rowcount) + " rows affected."
         else:
             cursor.close()
+            cnx.close()
             return "No category choices records found with provided category ID"
     else:
         return "Bad method"
@@ -572,18 +641,22 @@ def handle_category_choices_three(category_id, choice_id):
             errs.append("Choice ID must be an integer")
         else:
             try:
+                cnx = get_database_connection()
                 cursor = cnx.cursor()
                 cursor.execute("SELECT * FROM pasirinkimai WHERE id = %s", (json_data["choice_id"],))
                 result = cursor.fetchone()
                 cursor.close()
+                cnx.close()
             except Exception as e:
                 return str(e)
             if result is not None:
                 try:
+                    cnx = get_database_connection()
                     cursor = cnx.cursor()
                     cursor.execute("SELECT * FROM kategorijospasirinkimai WHERE (kategorijosId = %s AND pasirinkimoId = %s)", (category_id, json_data["choice_id"]))
                     result2 = cursor.fetchone()
                     cursor.close()
+                    cnx.close()
                     if result2 is not None:
                         errs.append("Can't change choice ID of this record to one that already exists on this category")
                 except Exception as e:
@@ -592,25 +665,30 @@ def handle_category_choices_three(category_id, choice_id):
             return errs
         else:
             try:
+                cnx = get_database_connection()
                 cursor = cnx.cursor()
                 cursor.execute(
                     "UPDATE kategorijospasirinkimai SET pasirinkimoId = %s WHERE (kategorijosId = %s AND pasirinkimoId = %s)",
                     (json_data["choice_id"], category_id, choice_id))
                 cnx.commit()
                 cursor.close()
+                cnx.close()
                 return "Successfully updated choice ID"
             except Exception as e:
                 return str(e)
     elif request.method == "DELETE":
         try:
+            cnx = get_database_connection()
             cursor = cnx.cursor(dictionary=True)
             cursor.execute("DELETE FROM kategorijospasirinkimai WHERE (kategorijosId = %s AND pasirinkimoId = %s)", (category_id, choice_id))
             cnx.commit()
             if cursor.rowcount > 0:
                 cursor.close()
+                cnx.close()
                 return "Successfully deleted choice on category."
             else:
                 cursor.close()
+                cnx.close()
                 return "No choice with provided ID on category with provided ID found."
         except Exception as e:
             return str(e)
