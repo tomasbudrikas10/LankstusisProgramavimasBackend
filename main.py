@@ -25,6 +25,10 @@ else:
 
 app = Flask(__name__)
 
+@app.route('/')
+def index():
+    return "It's alive!"
+
 @app.route("/products/", methods=["GET", "POST"])
 def handle_products_one():
     if request.method == "GET":
@@ -614,4 +618,5 @@ def handle_category_choices_three(category_id, choice_id):
         return "Bad method"
 
 
-app.run(debug=True)
+if __name__ == "__main__":
+    app.run(debug=True)

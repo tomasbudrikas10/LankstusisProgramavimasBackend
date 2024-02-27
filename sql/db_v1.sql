@@ -14,13 +14,13 @@ SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,N
 -- -----------------------------------------------------
 -- Schema mydb
 -- -----------------------------------------------------
-CREATE SCHEMA IF NOT EXISTS `mydb` DEFAULT CHARACTER SET utf8 ;
-USE `mydb` ;
+CREATE SCHEMA IF NOT EXISTS `tomasbudrikas10$mydb` DEFAULT CHARACTER SET utf8 ;
+USE `tomasbudrikas10$mydb` ;
 
 -- -----------------------------------------------------
 -- Table `mydb`.`Kategorijos`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `mydb`.`Kategorijos` (
+CREATE TABLE IF NOT EXISTS `tomasbudrikas10$mydb`.`Kategorijos` (
   `id` INT(11) NOT NULL AUTO_INCREMENT,
   `pavadinimas` VARCHAR(255) NULL DEFAULT NULL,
   PRIMARY KEY (`id`))
@@ -31,7 +31,7 @@ DEFAULT CHARACTER SET = utf8mb4;
 -- -----------------------------------------------------
 -- Table `mydb`.`Pasirinkimai`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `mydb`.`Pasirinkimai` (
+CREATE TABLE IF NOT EXISTS `tomasbudrikas10$mydb`.`Pasirinkimai` (
   `id` INT(11) NOT NULL AUTO_INCREMENT,
   `pavadinimas` VARCHAR(255) NULL DEFAULT NULL,
   PRIMARY KEY (`id`))
@@ -42,7 +42,7 @@ DEFAULT CHARACTER SET = utf8mb4;
 -- -----------------------------------------------------
 -- Table `mydb`.`KategorijosPasirinkimai`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `mydb`.`KategorijosPasirinkimai` (
+CREATE TABLE IF NOT EXISTS `tomasbudrikas10$mydb`.`KategorijosPasirinkimai` (
   `id` INT(11) NOT NULL AUTO_INCREMENT,
   `kategorijosId` INT(11) NOT NULL,
   `pasirinkimoId` INT(11) NOT NULL,
@@ -51,10 +51,10 @@ CREATE TABLE IF NOT EXISTS `mydb`.`KategorijosPasirinkimai` (
   INDEX `pasirinkimoId` (`pasirinkimoId` ASC),
   CONSTRAINT `kategorijospasirinkimai_ibfk_1`
     FOREIGN KEY (`kategorijosId`)
-    REFERENCES `mydb`.`Kategorijos` (`id`),
+    REFERENCES `tomasbudrikas10$mydb`.`Kategorijos` (`id`),
   CONSTRAINT `kategorijospasirinkimai_ibfk_2`
     FOREIGN KEY (`pasirinkimoId`)
-    REFERENCES `mydb`.`Pasirinkimai` (`id`))
+    REFERENCES `tomasbudrikas10$mydb`.`Pasirinkimai` (`id`))
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8mb4;
 
@@ -62,7 +62,7 @@ DEFAULT CHARACTER SET = utf8mb4;
 -- -----------------------------------------------------
 -- Table `mydb`.`Produktai`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `mydb`.`Produktai` (
+CREATE TABLE IF NOT EXISTS `tomasbudrikas10$mydb`.`Produktai` (
   `id` INT(11) NOT NULL AUTO_INCREMENT,
   `pavadinimas` VARCHAR(255) NULL DEFAULT NULL,
   `aprasymas` TEXT NULL DEFAULT NULL,
@@ -77,7 +77,7 @@ DEFAULT CHARACTER SET = utf8mb4;
 -- -----------------------------------------------------
 -- Table `mydb`.`ProduktoKategorijosIrPasirinkimai`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `mydb`.`ProduktoKategorijosIrPasirinkimai` (
+CREATE TABLE IF NOT EXISTS `tomasbudrikas10$mydb`.`ProduktoKategorijosIrPasirinkimai` (
   `id` INT(11) NOT NULL AUTO_INCREMENT,
   `produktoId` INT(11) NOT NULL,
   `kategorijosId` INT(11) NOT NULL,
@@ -88,13 +88,13 @@ CREATE TABLE IF NOT EXISTS `mydb`.`ProduktoKategorijosIrPasirinkimai` (
   INDEX `pasirinkimoId` (`pasirinkimoId` ASC),
   CONSTRAINT `produktokategorijosirpasirinkimai_ibfk_1`
     FOREIGN KEY (`produktoId`)
-    REFERENCES `mydb`.`Produktai` (`id`),
+    REFERENCES `tomasbudrikas10$mydb`.`Produktai` (`id`),
   CONSTRAINT `produktokategorijosirpasirinkimai_ibfk_2`
     FOREIGN KEY (`kategorijosId`)
-    REFERENCES `mydb`.`Kategorijos` (`id`),
+    REFERENCES `tomasbudrikas10$mydb`.`Kategorijos` (`id`),
   CONSTRAINT `produktokategorijosirpasirinkimai_ibfk_3`
     FOREIGN KEY (`pasirinkimoId`)
-    REFERENCES `mydb`.`Pasirinkimai` (`id`))
+    REFERENCES `tomasbudrikas10$mydb`.`Pasirinkimai` (`id`))
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8mb4;
 

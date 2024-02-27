@@ -1,14 +1,26 @@
 import mysql.connector
-cnx = mysql.connector.connect(
-    host="127.0.0.1",
-    port=3306,
-    user="root",
-    password="")
+import os
+import json
+if os.environ.get("DATABASE_URL"):
+    cnx = mysql.connector.connect(
+        host=os.environ.get("DATABASE_URL"),
+        port=os.environ.get("DATABASE_PORT"),
+        user=os.environ.get("DATABASE_USER"),
+        password=os.environ.get("DATABASE_PASSWORD")
+    )
+else:
+    with open("./config.json", 'r') as file:
+        mysql_settings = json.load(file)
+    cnx = mysql.connector.connect(
+        host=mysql_settings["host"],
+        port=mysql_settings["port"],
+        user=mysql_settings["user"],
+        password=mysql_settings["password"])
 
 
 with open("./sql/db_v1.sql") as file:
     cursor = cnx.cursor()
-    cursor.execute("DROP DATABASE IF EXISTS mydb")
+    cursor.execute("DROP DATABASE IF EXISTS tomasbudrikas10$mydb")
     cnx.commit()
     for statement in file.read().split(';'):
         if statement.strip():
@@ -18,7 +30,7 @@ with open("./sql/db_v1.sql") as file:
 
 
 cursor = cnx.cursor()
-cursor.execute("USE mydb")
+cursor.execute("USE tomasbudrikas10$mydb")
 cnx.commit()
 
 add_kategorija_query = ("INSERT INTO kategorijos"
