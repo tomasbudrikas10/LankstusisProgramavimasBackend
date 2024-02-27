@@ -1,15 +1,29 @@
+import os
+
 from flask import Flask, request
 import json
 import mysql.connector
-cnx = mysql.connector.connect(
-    host="127.0.0.1",
-    port=3306,
-    user="root",
-    password="",
-    database="mydb")
+
+if os.environ.get("DATABASE_URL"):
+    cnx = mysql.connector.connect(
+        host=os.environ.get("DATABASE_URL"),
+        port=os.environ.get("DATABASE_PORT"),
+        user=os.environ.get("DATABASE_USER"),
+        password=os.environ.get("DATABASE_PASSWORD"),
+        database=os.environ.get("DATABASE_NAME")
+    )
+else:
+    with open("config.json", 'r') as file:
+        mysql_settings = json.load(file)
+    cnx = mysql.connector.connect(
+        host=mysql_settings["host"],
+        port=mysql_settings["port"],
+        user=mysql_settings["user"],
+        password=mysql_settings["password"],
+        database=mysql_settings["database"])
+
 
 app = Flask(__name__)
-
 
 @app.route("/products/", methods=["GET", "POST"])
 def handle_products_one():
