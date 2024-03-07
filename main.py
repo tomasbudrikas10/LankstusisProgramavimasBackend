@@ -3,6 +3,7 @@ import os
 from flask import Flask, request
 import json
 import mysql.connector
+import bcrypt
 
 def get_database_connection():
     if os.environ.get("DATABASE_URL"):
@@ -29,6 +30,186 @@ app = Flask(__name__)
 @app.route('/')
 def index():
     return "It's alive!"
+
+
+@app.route("/users/", methods=["GET", "POST"])
+def handle_users_one():
+    if request.method == "GET":
+        try:
+            cnx = get_database_connection()
+            cursor = cnx.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM vartotojai")
+            rows = cursor.fetchall()
+            cursor.close()
+            cnx.close()
+            return json.dumps(rows)
+        except Exception as e:
+            return str(e)
+    elif request.method == "POST":
+        query = ("INSERT INTO vartotojai"
+                 "(pavadinimas, slaptazodis, teises)"
+                 "VALUES (%s, %s, %s)")
+        json_data = request.json
+        errors = []
+        if "name" not in json_data:
+            errors.append("Name is required")
+        else:
+            if type(json_data["name"]) != str:
+                errors.append("Name must be a string")
+            else:
+                if len(json_data["name"].strip()) == 0:
+                    errors.append("Name must not be empty")
+                else:
+                    try:
+                        cnx = get_database_connection()
+                        cursor = cnx.cursor(dictionary=True)
+                        cursor.execute("SELECT * FROM vartotojai WHERE `pavadinimas`=%s", (json_data["name"],))
+                        result = cursor.fetchone()
+                        cursor.close()
+                        cnx.close()
+                        if result is not None:
+                            errors.append("A user with the provided name already exists")
+                    except Exception as e:
+                        return str(e)
+        if "password" not in json_data:
+            errors.append("Password is required")
+        else:
+            if type(json_data["password"]) != str:
+                errors.append("Password must be a string")
+            else:
+                if len(json_data["password"].strip()) == 0:
+                    errors.append("Password must not be empty")
+        if "role" not in json_data:
+            errors.append("Role is required")
+        else:
+            if type(json_data["role"]) != str:
+                errors.append("Role must be a string")
+            else:
+                if not (json_data["role"] == "admin" or json_data["role"] == "user" or json_data["role"] == "company"):
+                    errors.append("Role must be one of: admin, user or company")
+        if len(errors) == 0:
+            try:
+                password = json_data["password"].strip()
+                passwordBytes = password.encode("utf-8")
+                salt = bcrypt.gensalt()
+                hashedPassword = bcrypt.hashpw(passwordBytes, salt)
+                cnx = get_database_connection()
+                cursor = cnx.cursor()
+                cursor.execute(query, (json_data["name"].strip(), hashedPassword, json_data["role"]))
+                cnx.commit()
+                cursor.close()
+                cnx.close()
+                return "Successfully created user."
+            except Exception as e:
+                return str(e)
+        else:
+            return errors
+    else:
+        return "Bad method"
+
+
+@app.route("/users/<int:user_id>", methods=["GET", "PUT", "DELETE"])
+def handle_users_two(user_id):
+    if request.method == "GET":
+        try:
+            cnx = get_database_connection()
+            cursor = cnx.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM vartotojai WHERE id = %s", (user_id,))
+            result = cursor.fetchone()
+            cursor.close()
+            cnx.close()
+            if result is not None:
+                return json.dumps(result)
+            else:
+                return "No user found."
+        except Exception as e:
+            return str(e)
+    elif request.method == "PUT":
+        json_data = request.json
+        errors = []
+        try:
+            cnx = get_database_connection()
+            cursor = cnx.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM vartotojai WHERE id = %s", (user_id,))
+            result = cursor.fetchone()
+            cursor.close()
+            cnx.close()
+        except Exception as e:
+            return str(e)
+        if result is None:
+            errors.append("No user found with provided ID")
+        else:
+            if "name" not in json_data:
+                errors.append("Name is required")
+            else:
+                if type(json_data["name"]) != str:
+                    errors.append("Name must be a string")
+                else:
+                    if len(json_data["name"].strip()) == 0:
+                        errors.append("Name must not be empty")
+                    else:
+                        try:
+                            cnx = get_database_connection()
+                            cursor = cnx.cursor(dictionary=True)
+                            cursor.execute("SELECT * FROM vartotojai WHERE `pavadinimas`=%s", (json_data["name"],))
+                            result = cursor.fetchone()
+                            cursor.close()
+                            cnx.close()
+                            if result is not None and result["id"] != user_id:
+                                errors.append("A user with the provided name already exists")
+                        except Exception as e:
+                            return str(e)
+            if "password" not in json_data:
+                errors.append("Password is required")
+            else:
+                if type(json_data["password"]) != str:
+                    errors.append("Password must be a string")
+                else:
+                    if len(json_data["password"].strip()) == 0:
+                        errors.append("Password must not be empty")
+            if "role" not in json_data:
+                errors.append("Role is required")
+            else:
+                if type(json_data["role"]) != str:
+                    errors.append("Role must be a string")
+                else:
+                    if not (json_data["role"] == "admin" or json_data["role"] == "user" or json_data["role"] == "company"):
+                        errors.append("Role must be one of: admin, user or company")
+        if len(errors) == 0:
+            try:
+                password = json_data["password"].strip()
+                passwordBytes = password.encode("utf-8")
+                salt = bcrypt.gensalt()
+                hashedPassword = bcrypt.hashpw(passwordBytes, salt)
+                cnx = get_database_connection()
+                cursor = cnx.cursor()
+                cursor.execute("UPDATE `vartotojai` SET `pavadinimas`=%s, `slaptazodis`=%s, `teises`=%s WHERE `id` = %s", (json_data["name"].strip(), hashedPassword, json_data["role"], user_id))
+                cnx.commit()
+                cursor.close()
+                cnx.close()
+                return "Successfully updated user."
+            except Exception as e:
+                return str(e)
+        else:
+            return errors
+    elif request.method == "DELETE":
+        try:
+            cnx = get_database_connection()
+            cursor = cnx.cursor()
+            cursor.execute("DELETE FROM vartotojai WHERE id = %s", (user_id,))
+            cnx.commit()
+            if cursor.rowcount == 0:
+                cursor.close()
+                cnx.close()
+                return "No user found with provided ID"
+            else:
+                cursor.close()
+                cnx.close()
+                return "Removed user successfully"
+        except Exception as e:
+            return str(e)
+    else:
+        return "Bad method"
 
 
 @app.route("/reviews/", methods=["GET", "POST"])
