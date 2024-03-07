@@ -18,7 +18,7 @@ else:
         password=mysql_settings["password"])
 
 
-with open("./sql/db_v1.sql") as file:
+with open("./sql/db_v2.sql") as file:
     cursor = cnx.cursor()
     cursor.execute("DROP DATABASE IF EXISTS tomasbudrikas10$mydb")
     cnx.commit()

@@ -30,6 +30,216 @@ app = Flask(__name__)
 def index():
     return "It's alive!"
 
+
+@app.route("/reviews/", methods=["GET", "POST"])
+def handle_reviews_one():
+    if request.method == "GET":
+        try:
+            cnx = get_database_connection()
+            cursor = cnx.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM atsiliepimai")
+            rows = cursor.fetchall()
+            cursor.close()
+            cnx.close()
+            return json.dumps(rows)
+        except Exception as e:
+            return str(e)
+    elif request.method == "POST":
+        query = ("INSERT INTO atsiliepimai"
+                 "(produktoId, vartotojoId, vertinimas)"
+                 "VALUES (%s, %s, %s)")
+        json_data = request.json
+        errors = []
+        if "product_id" not in json_data:
+            errors.append("Product ID is required")
+        else:
+            if type(json_data["product_id"]) != int:
+                errors.append("Product ID must be an integer")
+            else:
+                try:
+                    cnx = get_database_connection()
+                    cursor = cnx.cursor(dictionary=True)
+                    cursor.execute("SELECT * FROM produktai WHERE `id`=%s", (json_data["product_id"],))
+                    result = cursor.fetchone()
+                    cursor.close()
+                    cnx.close()
+                    if result is None:
+                        errors.append("Product with provided product ID does not exist")
+                except Exception as e:
+                    return str(e)
+        if "user_id" not in json_data:
+            errors.append("User ID is required")
+        else:
+            if type(json_data["user_id"]) != int:
+                errors.append("User ID must be an integer")
+            else:
+                try:
+                    cnx = get_database_connection()
+                    cursor = cnx.cursor(dictionary=True)
+                    cursor.execute("SELECT * FROM vartotojai WHERE `id`=%s", (json_data["user_id"],))
+                    result = cursor.fetchone()
+                    cursor.close()
+                    cnx.close()
+                    if result is None:
+                        errors.append("User with provided user ID does not exist")
+                except Exception as e:
+                    return str(e)
+        if "rating" not in json_data:
+            errors.append("Rating is required")
+        else:
+            if type(json_data["rating"]) != int:
+                errors.append("Rating must be an integer")
+            else:
+                if json_data["rating"] < 1 or json_data["rating"] > 10:
+                    errors.append("Rating must be an integer ranging between and including 1 and 10")
+                else:
+                    try:
+                        cnx = get_database_connection()
+                        cursor = cnx.cursor(dictionary=True)
+                        cursor.execute("SELECT * FROM atsiliepimai WHERE `produktoId`=%s AND `vartotojoId`=%s", (json_data["product_id"], json_data["user_id"]))
+                        result = cursor.fetchone()
+                        cursor.close()
+                        cnx.close()
+                        if result is not None:
+                            errors.append("User already provided a review for this product")
+                    except Exception as e:
+                        return str(e)
+        if len(errors) == 0:
+            try:
+                cnx = get_database_connection()
+                cursor = cnx.cursor()
+                cursor.execute(query, (json_data["product_id"], json_data["user_id"], json_data["rating"]))
+                cnx.commit()
+                cursor.close()
+                cnx.close()
+                return "Successfully created rating."
+            except Exception as e:
+                return str(e)
+        else:
+            return errors
+    else:
+        return "Bad method"
+
+
+@app.route("/reviews/<int:review_id>", methods=["GET", "PUT", "DELETE"])
+def handle_reviews_two(review_id):
+    if request.method == "GET":
+        try:
+            cnx = get_database_connection()
+            cursor = cnx.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM atsiliepimai WHERE id = %s", (review_id,))
+            result = cursor.fetchone()
+            cursor.close()
+            cnx.close()
+            if result is not None:
+                return json.dumps(result)
+            else:
+                return "No review found."
+        except Exception as e:
+            return str(e)
+    elif request.method == "PUT":
+        json_data = request.json
+        errors = []
+        try:
+            cnx = get_database_connection()
+            cursor = cnx.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM atsiliepimai WHERE id = %s", (review_id,))
+            result = cursor.fetchone()
+            cursor.close()
+            cnx.close()
+        except Exception as e:
+            return str(e)
+        if result is None:
+            errors.append("No review found with provided ID")
+        else:
+            if "product_id" not in json_data:
+                errors.append("Product ID is required")
+            else:
+                if type(json_data["product_id"]) != int:
+                    errors.append("Product ID must be an integer")
+                else:
+                    try:
+                        cnx = get_database_connection()
+                        cursor = cnx.cursor(dictionary=True)
+                        cursor.execute("SELECT * FROM produktai WHERE `id`=%s", (json_data["product_id"],))
+                        result = cursor.fetchone()
+                        cursor.close()
+                        cnx.close()
+                        if result is None:
+                            errors.append("Product with provided product ID does not exist")
+                    except Exception as e:
+                        return str(e)
+            if "user_id" not in json_data:
+                errors.append("User ID is required")
+            else:
+                if type(json_data["user_id"]) != int:
+                    errors.append("User ID must be an integer")
+                else:
+                    try:
+                        cnx = get_database_connection()
+                        cursor = cnx.cursor(dictionary=True)
+                        cursor.execute("SELECT * FROM vartotojai WHERE `id`=%s", (json_data["user_id"],))
+                        result = cursor.fetchone()
+                        cursor.close()
+                        cnx.close()
+                        if result is None:
+                            errors.append("User with provided user ID does not exist")
+                    except Exception as e:
+                        return str(e)
+            if "rating" not in json_data:
+                errors.append("Rating is required")
+            else:
+                if type(json_data["rating"]) != int:
+                    errors.append("Rating must be an integer")
+                else:
+                    if json_data["rating"] < 1 or json_data["rating"] > 10:
+                        errors.append("Rating must be an integer ranging between and including 1 and 10")
+                    else:
+                        try:
+                            cnx = get_database_connection()
+                            cursor = cnx.cursor(dictionary=True)
+                            cursor.execute("SELECT * FROM atsiliepimai WHERE `produktoId`=%s AND `vartotojoId`=%s",
+                                           (json_data["product_id"], json_data["user_id"]))
+                            result = cursor.fetchone()
+                            cursor.close()
+                            cnx.close()
+                            if result is not None:
+                                errors.append("User already provided a review for this product")
+                        except Exception as e:
+                            return str(e)
+        if len(errors) == 0:
+            try:
+                cnx = get_database_connection()
+                cursor = cnx.cursor(dictionary=True)
+                cursor.execute("UPDATE `atsiliepimai` SET `produktoId`=%s, `vartotojoId`=%s, `vertinimas`=%s WHERE `id` = %s", (json_data["product_id"], json_data["user_id"], json_data["rating"], review_id))
+                cnx.commit()
+                cursor.close()
+                cnx.close()
+                return "Successfully updated review"
+            except Exception as e:
+                return str(e)
+        else:
+            return errors
+    elif request.method == "DELETE":
+        try:
+            cnx = get_database_connection()
+            cursor = cnx.cursor()
+            cursor.execute("DELETE FROM atsiliepimai WHERE id = %s", (review_id,))
+            cnx.commit()
+        except Exception as e:
+            return str(e)
+        if cursor.rowcount == 0:
+            cursor.close()
+            cnx.close()
+            return "No review found with provided ID"
+        else:
+            cursor.close()
+            cnx.close()
+            return "Removed review successfully"
+    else:
+        return "Bad method"
+
+
 @app.route("/products/", methods=["GET", "POST"])
 def handle_products_one():
     if request.method == "GET":
