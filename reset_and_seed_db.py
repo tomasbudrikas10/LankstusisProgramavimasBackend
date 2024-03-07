@@ -1,3 +1,4 @@
+import bcrypt
 import mysql.connector
 import os
 import json
@@ -53,6 +54,14 @@ add_produkto_kategorijos_pasirinkimai_query = ("INSERT INTO produktokategorijosi
                                                "(produktoId, kategorijosId, pasirinkimoId)"
                                                "VALUES (%s, %s, %s)")
 
+add_atsiliepimai_query = ("INSERT INTO atsiliepimai"
+         "(produktoId, vartotojoId, vertinimas)"
+         "VALUES (%s, %s, %s)")
+
+add_vartotojai_query = ("INSERT INTO vartotojai"
+         "(pavadinimas, slaptazodis, teises)"
+         "VALUES (%s, %s, %s)")
+
 try:
     cursor.execute(add_kategorija_query, ("Kategorija A",))
     cursor.execute(add_kategorija_query, ("Kategorija B",))
@@ -99,8 +108,35 @@ try:
     cursor.execute(add_produkto_kategorijos_pasirinkimai_query, (5, 5, 5))
     cnx.commit()
 
+    password = "abc1"
+    passwordBytes = password.encode("utf-8")
+    salt = bcrypt.gensalt()
+    hashedPassword = bcrypt.hashpw(passwordBytes, salt)
+    cursor.execute(add_vartotojai_query, ("Vartotojas A", hashedPassword, "user"))
+    password = "abc2"
+    passwordBytes = password.encode("utf-8")
+    salt = bcrypt.gensalt()
+    hashedPassword = bcrypt.hashpw(passwordBytes, salt)
+    cursor.execute(add_vartotojai_query, ("Vartotojas B", hashedPassword, "company"))
+    password = "abc3"
+    passwordBytes = password.encode("utf-8")
+    salt = bcrypt.gensalt()
+    hashedPassword = bcrypt.hashpw(passwordBytes, salt)
+    cursor.execute(add_vartotojai_query, ("Vartotojas C", hashedPassword, "admin"))
+    cnx.commit()
+
+    cursor.execute(add_atsiliepimai_query, (1, 1, 5))
+    cursor.execute(add_atsiliepimai_query, (1, 2, 9))
+    cursor.execute(add_atsiliepimai_query, (2, 2, 10))
+    cursor.execute(add_atsiliepimai_query, (2, 3, 1))
+    cursor.execute(add_atsiliepimai_query, (3, 3, 7))
+    cursor.execute(add_atsiliepimai_query, (3, 1, 2))
+    cnx.commit()
+
     print("worked")
     cursor.close()
+    cnx.close()
 except Exception as e:
     print(e)
     cursor.close()
+    cnx.close()
