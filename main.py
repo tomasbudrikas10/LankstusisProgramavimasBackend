@@ -42,9 +42,9 @@ def handle_users_one():
             rows = cursor.fetchall()
             cursor.close()
             cnx.close()
-            return json.dumps(rows)
+            return json.dumps({"message": "Successfully returned all users.", "data": rows}), 200, {'Content-Type': 'application/json'}
         except Exception as e:
-            return str(e)
+            return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {'Content-Type': 'application/json'}
     elif request.method == "POST":
         query = ("INSERT INTO vartotojai"
                  "(pavadinimas, slaptazodis, teises)"
@@ -70,7 +70,7 @@ def handle_users_one():
                         if result is not None:
                             errors.append("A user with the provided name already exists")
                     except Exception as e:
-                        return str(e)
+                        return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {'Content-Type': 'application/json'}
         if "password" not in json_data:
             errors.append("Password is required")
         else:
@@ -99,13 +99,16 @@ def handle_users_one():
                 cnx.commit()
                 cursor.close()
                 cnx.close()
-                return "Successfully created user."
+                return json.dumps({"message":"Successfully created user."}), 200, {'Content-Type': 'application/json'}
             except Exception as e:
-                return str(e)
+                return json.dumps({"message": "Encountered a database error.", "errors": [str(e)]}), 500, {
+                    'Content-Type': 'application/json'}
         else:
-            return errors
+            return json.dumps({"message": "Failed to create user.", "errors": errors}), 400, {
+                'Content-Type': 'application/json'}
     else:
-        return "Bad method"
+        return json.dumps({"message": "Failed to find route.", "errors": ["There are no routes with provided method."]}), 404, {
+                    'Content-Type': 'application/json'}
 
 
 @app.route("/users/<int:user_id>", methods=["GET", "PUT", "DELETE"])
@@ -119,11 +122,12 @@ def handle_users_two(user_id):
             cursor.close()
             cnx.close()
             if result is not None:
-                return json.dumps(result)
+                return json.dumps({"message": "Successfully returned user.", "data": result}), 200, {
+                    'Content-Type': 'application/json'}
             else:
-                return "No user found."
+                return json.dumps({"message": "No user found.", "errors": ["No user with provided ID."]}), 404, {'Content-Type': 'application/json'}
         except Exception as e:
-            return str(e)
+            return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {'Content-Type': 'application/json'}
     elif request.method == "PUT":
         json_data = request.json
         errors = []
@@ -135,7 +139,7 @@ def handle_users_two(user_id):
             cursor.close()
             cnx.close()
         except Exception as e:
-            return str(e)
+            return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {'Content-Type': 'application/json'}
         if result is None:
             errors.append("No user found with provided ID")
         else:
@@ -158,7 +162,8 @@ def handle_users_two(user_id):
                             if result is not None and result["id"] != user_id:
                                 errors.append("A user with the provided name already exists")
                         except Exception as e:
-                            return str(e)
+                            return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                                'Content-Type': 'application/json'}
             if "password" not in json_data:
                 errors.append("Password is required")
             else:
@@ -187,11 +192,12 @@ def handle_users_two(user_id):
                 cnx.commit()
                 cursor.close()
                 cnx.close()
-                return "Successfully updated user."
+                return json.dumps({"message": "Successfully updated user."}), 200, {'Content-Type': 'application/json'}
             except Exception as e:
-                return str(e)
+                return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                    'Content-Type': 'application/json'}
         else:
-            return errors
+            return json.dumps({"message": "Failed to update user.", "errors": errors}), 400, {'Content-Type': 'application/json'}
     elif request.method == "DELETE":
         try:
             cnx = get_database_connection()
@@ -201,15 +207,17 @@ def handle_users_two(user_id):
             if cursor.rowcount == 0:
                 cursor.close()
                 cnx.close()
-                return "No user found with provided ID"
+                return json.dumps({"message": "No user found.", "errors": ["No user with provided ID."]}), 404, {'Content-Type': 'application/json'}
             else:
                 cursor.close()
                 cnx.close()
-                return "Removed user successfully"
+                return json.dumps({"message": "Removed user successfully."}), 200, {'Content-Type': 'application/json'}
         except Exception as e:
-            return str(e)
+            return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {'Content-Type': 'application/json'}
     else:
-        return "Bad method"
+        return json.dumps(
+            {"message": "Failed to find route.", "errors": ["There are no routes with provided method."]}), 404, {
+            'Content-Type': 'application/json'}
 
 
 @app.route("/reviews/", methods=["GET", "POST"])
@@ -222,9 +230,9 @@ def handle_reviews_one():
             rows = cursor.fetchall()
             cursor.close()
             cnx.close()
-            return json.dumps(rows)
+            return json.dumps({"message": "Successfully returned reviews.", "data": rows}), 200, {'Content-Type': 'application/json'}
         except Exception as e:
-            return str(e)
+            return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {'Content-Type': 'application/json'}
     elif request.method == "POST":
         query = ("INSERT INTO atsiliepimai"
                  "(produktoId, vartotojoId, vertinimas)"
@@ -247,7 +255,8 @@ def handle_reviews_one():
                     if result is None:
                         errors.append("Product with provided product ID does not exist")
                 except Exception as e:
-                    return str(e)
+                    return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                        'Content-Type': 'application/json'}
         if "user_id" not in json_data:
             errors.append("User ID is required")
         else:
@@ -264,7 +273,8 @@ def handle_reviews_one():
                     if result is None:
                         errors.append("User with provided user ID does not exist")
                 except Exception as e:
-                    return str(e)
+                    return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                        'Content-Type': 'application/json'}
         if "rating" not in json_data:
             errors.append("Rating is required")
         else:
@@ -284,7 +294,8 @@ def handle_reviews_one():
                         if result is not None:
                             errors.append("User already provided a review for this product")
                     except Exception as e:
-                        return str(e)
+                        return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                            'Content-Type': 'application/json'}
         if len(errors) == 0:
             try:
                 cnx = get_database_connection()
@@ -293,13 +304,16 @@ def handle_reviews_one():
                 cnx.commit()
                 cursor.close()
                 cnx.close()
-                return "Successfully created rating."
+                return json.dumps({"message": "Successfully created review."}), 200, {'Content-Type': 'application/json'}
             except Exception as e:
-                return str(e)
+                return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                    'Content-Type': 'application/json'}
         else:
-            return errors
+            return json.dumps({"message": "Failed to create review.", "errors": errors}), 400, {'Content-Type': 'application/json'}
     else:
-        return "Bad method"
+        return json.dumps(
+            {"message": "Failed to find route.", "errors": ["There are no routes with provided method."]}), 404, {
+            'Content-Type': 'application/json'}
 
 
 @app.route("/reviews/<int:review_id>", methods=["GET", "PUT", "DELETE"])
@@ -313,11 +327,11 @@ def handle_reviews_two(review_id):
             cursor.close()
             cnx.close()
             if result is not None:
-                return json.dumps(result)
+                return json.dumps({"message": "Successfully retrieved review with provided ID.", "data": result}), 200, {'Content-Type': 'application/json'}
             else:
-                return "No review found."
+                return json.dumps({"message": "Failed to retrieve review.", "errors": ["No review with provided ID."]}), 404, {'Content-Type': 'application/json'}
         except Exception as e:
-            return str(e)
+            return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {'Content-Type': 'application/json'}
     elif request.method == "PUT":
         json_data = request.json
         errors = []
@@ -329,7 +343,7 @@ def handle_reviews_two(review_id):
             cursor.close()
             cnx.close()
         except Exception as e:
-            return str(e)
+            return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {'Content-Type': 'application/json'}
         if result is None:
             errors.append("No review found with provided ID")
         else:
@@ -349,7 +363,8 @@ def handle_reviews_two(review_id):
                         if result is None:
                             errors.append("Product with provided product ID does not exist")
                     except Exception as e:
-                        return str(e)
+                        return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                            'Content-Type': 'application/json'}
             if "user_id" not in json_data:
                 errors.append("User ID is required")
             else:
@@ -366,7 +381,8 @@ def handle_reviews_two(review_id):
                         if result is None:
                             errors.append("User with provided user ID does not exist")
                     except Exception as e:
-                        return str(e)
+                        return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                            'Content-Type': 'application/json'}
             if "rating" not in json_data:
                 errors.append("Rating is required")
             else:
@@ -387,7 +403,8 @@ def handle_reviews_two(review_id):
                             if result is not None:
                                 errors.append("User already provided a review for this product")
                         except Exception as e:
-                            return str(e)
+                            return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                                'Content-Type': 'application/json'}
         if len(errors) == 0:
             try:
                 cnx = get_database_connection()
@@ -396,11 +413,12 @@ def handle_reviews_two(review_id):
                 cnx.commit()
                 cursor.close()
                 cnx.close()
-                return "Successfully updated review"
+                return json.dumps({"message": "Successfully updated review."}), 200, {"Content-Type": "application/json"}
             except Exception as e:
-                return str(e)
+                return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                    'Content-Type': 'application/json'}
         else:
-            return errors
+            return json.dumps({"message": "Failed to update review.", "errors": errors}), 400, {"Content-Type": "application/json"}
     elif request.method == "DELETE":
         try:
             cnx = get_database_connection()
@@ -408,18 +426,19 @@ def handle_reviews_two(review_id):
             cursor.execute("DELETE FROM atsiliepimai WHERE id = %s", (review_id,))
             cnx.commit()
         except Exception as e:
-            return str(e)
+            return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {'Content-Type': 'application/json'}
         if cursor.rowcount == 0:
             cursor.close()
             cnx.close()
-            return "No review found with provided ID"
+            return json.dumps({"message": "Failed to delete review.", "errors": ["No review found with provided ID."]}), 404, {"Content-Type": "application/json"}
         else:
             cursor.close()
             cnx.close()
-            return "Removed review successfully"
+            return json.dumps({"message": "Removed review successfully"}), 200, {"Content-Type": "application/json"}
     else:
-        return "Bad method"
-
+        return json.dumps(
+            {"message": "Failed to find route.", "errors": ["There are no routes with provided method."]}), 404, {
+            'Content-Type': 'application/json'}
 
 @app.route("/products/", methods=["GET", "POST"])
 def handle_products_one():
@@ -431,9 +450,9 @@ def handle_products_one():
             rows = cursor.fetchall()
             cursor.close()
             cnx.close()
-            return json.dumps(rows)
+            return json.dumps({"message": "Successfully retrieved all products.", "data": rows}), 200, {"Content-Type": "application/json"}
         except Exception as e:
-            return str(e)
+            return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {'Content-Type': 'application/json'}
     elif request.method == "POST":
         query = ("INSERT INTO produktai"
                  "(pavadinimas, aprasymas, paveiksliukas, gamintojas, produkto_puslapis)"
@@ -459,7 +478,8 @@ def handle_products_one():
                         if result is not None:
                             errors.append("A product with the provided name already exists")
                     except Exception as e:
-                        return str(e)
+                        return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                            'Content-Type': 'application/json'}
         if "description" not in json_data:
             errors.append("Description is required")
         else:
@@ -500,14 +520,16 @@ def handle_products_one():
                 cnx.commit()
                 cursor.close()
                 cnx.close()
-                return "Successfully created product."
+                return json.dumps({"message": "Successfully created product."}), 200, {"ContentType": "application/json"}
             except Exception as e:
-                return str(e)
+                return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                    'Content-Type': 'application/json'}
         else:
-            return errors
+            return json.dumps({"message": "Failed to create product.", "errors": errors}), 400, {"ContentType": "application/json"}
     else:
-        return "Bad method"
-
+        return json.dumps(
+            {"message": "Failed to find route.", "errors": ["There are no routes with provided method."]}), 404, {
+            'Content-Type': 'application/json'}
 
 @app.route("/products/<int:product_id>", methods=["GET", "PUT", "DELETE"])
 def handle_products_two(product_id):
@@ -520,11 +542,11 @@ def handle_products_two(product_id):
             cursor.close()
             cnx.close()
             if result is not None:
-                return json.dumps(result)
+                return json.dumps({"message": "Successfully retrieved product with provided ID.", "data": result}), 200, {"ContentType": "application/json"}
             else:
-                return "No product found."
+                return json.dumps({"message": "Failed to retrieve product.", "errors": ["No product with provided ID."]}), 404, {"ContentType": "application/json"}
         except Exception as e:
-            return str(e)
+            return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {'Content-Type': 'application/json'}
     elif request.method == "PUT":
         json_data = request.json
         errors = []
@@ -536,7 +558,7 @@ def handle_products_two(product_id):
             cursor.close()
             cnx.close()
         except Exception as e:
-            return str(e)
+            return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {'Content-Type': 'application/json'}
         if result is None:
             errors.append("No product found with provided ID")
         else:
@@ -559,7 +581,8 @@ def handle_products_two(product_id):
                             if result is not None and result["id"] != product_id:
                                 errors.append("A product with the provided name already exists")
                         except Exception as e:
-                            return str(e)
+                            return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                                'Content-Type': 'application/json'}
             if "description" not in json_data:
                 errors.append("Description is required")
             else:
@@ -600,11 +623,12 @@ def handle_products_two(product_id):
                 cursor.close()
                 cnx.commit()
                 cnx.close()
-                return "Successfully updated product."
+                return json.dumps({"message": "Successfully updated product."}), 200, {"Content-Type": "application/json"}
             except Exception as e:
-                return str(e)
+                return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                    'Content-Type': 'application/json'}
         else:
-            return errors
+            return json.dumps({"message": "Failed to update product.", "errors": errors}), 400, {"Content-Type": "application/json"}
     elif request.method == "DELETE":
         try:
             cnx = get_database_connection()
@@ -614,16 +638,17 @@ def handle_products_two(product_id):
             if cursor.rowcount == 0:
                 cursor.close()
                 cnx.close()
-                return "No product found with provided ID"
+                return json.dumps({"message": "Failed to delete product.", "errors": ["No product found with provided ID."]}), 404, {"Content-Type": "application/json"}
             else:
                 cursor.close()
                 cnx.close()
-                return "Removed product successfully"
+                return json.dumps({"message": "Removed product successfully."}), 200, {"Content-Type": "application/json"}
         except Exception as e:
-            return str(e)
+            return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {'Content-Type': 'application/json'}
     else:
-        return "Bad method"
-
+        return json.dumps(
+            {"message": "Failed to find route.", "errors": ["There are no routes with provided method."]}), 404, {
+            'Content-Type': 'application/json'}
 
 @app.route("/categories/", methods=["GET", "POST"])
 def handle_categories_one():
@@ -635,9 +660,9 @@ def handle_categories_one():
             rows = cursor.fetchall()
             cursor.close()
             cnx.close()
-            return json.dumps(rows)
+            return json.dumps({"message": "Successfully retrieved all categories.", "data": rows}), 200, {"Content-Type": "application/json"}
         except Exception as e:
-            return str(e)
+            return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {'Content-Type': 'application/json'}
     elif request.method == "POST":
         query = ("INSERT INTO kategorijos"
                  "(pavadinimas)"
@@ -663,7 +688,8 @@ def handle_categories_one():
                         if result is not None:
                             errors.append("A category with the provided name already exists")
                     except Exception as e:
-                        return str(e)
+                        return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                            'Content-Type': 'application/json'}
         if len(errors) == 0:
             try:
                 cnx = get_database_connection()
@@ -672,14 +698,16 @@ def handle_categories_one():
                 cnx.commit()
                 cursor.close()
                 cnx.close()
-                return "Successfully created category."
+                return json.dumps({"message": "Successfully created category."}), 200, {'Content-Type': 'application/json'}
             except Exception as e:
-                return str(e)
+                return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                    'Content-Type': 'application/json'}
         else:
-            return errors
+            return json.dumps({"message": "Failed to create category.", "errors": errors}), 400, {'Content-Type': 'application/json'}
     else:
-        return "Bad method"
-
+        return json.dumps(
+            {"message": "Failed to find route.", "errors": ["There are no routes with provided method."]}), 404, {
+            'Content-Type': 'application/json'}
 
 @app.route("/categories/<int:category_id>", methods=["GET", "PUT", "DELETE"])
 def handle_categories_two(category_id):
@@ -692,11 +720,11 @@ def handle_categories_two(category_id):
             cursor.close()
             cnx.close()
             if result is not None:
-                return json.dumps(result)
+                return json.dumps({"message": "Successfully retrieved category with provided ID.", "data": result}), 200, {"Content-Type": "application/json"}
             else:
-                return "No category found."
+                return json.dumps({"message": "Failed to retrieve category.", "errors": ["No category with provided ID."]}), 404, {"Content-Type": "application/json"}
         except Exception as e:
-            return str(e)
+            return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {'Content-Type': 'application/json'}
     elif request.method == "PUT":
         data = request.json
         errors = []
@@ -708,7 +736,7 @@ def handle_categories_two(category_id):
             cursor.close()
             cnx.close()
         except Exception as e:
-            return str(e)
+            return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {'Content-Type': 'application/json'}
         if result is None:
             errors.append("No category found with provided ID")
         else:
@@ -729,7 +757,8 @@ def handle_categories_two(category_id):
                             if result is not None and result["id"] != category_id:
                                 errors.append("A category with the provided name already exists")
                         except Exception as e:
-                            return str(e)
+                            return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                                'Content-Type': 'application/json'}
             else:
                 errors.append("No name provided")
         if len(errors) == 0:
@@ -740,11 +769,12 @@ def handle_categories_two(category_id):
                 cnx.commit()
                 cursor.close()
                 cnx.close()
-                return "Successfully updated category"
+                return json.dumps({"message": "Successfully updated category."}), 200, {"Content-Type": "application/json"}
             except Exception as e:
-                return str(e)
+                return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                    'Content-Type': 'application/json'}
         else:
-            return errors
+            return json.dumps({"message": "Failed to update category.", "errors": errors}), 400, {"Content-Type": "application/json"}
     elif request.method == "DELETE":
         try:
             cnx = get_database_connection()
@@ -752,18 +782,19 @@ def handle_categories_two(category_id):
             cursor.execute("DELETE FROM kategorijos WHERE id = %s", (category_id,))
             cnx.commit()
         except Exception as e:
-            return str(e)
+            return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {'Content-Type': 'application/json'}
         if cursor.rowcount == 0:
             cursor.close()
             cnx.close()
-            return "No category found with provided ID"
+            return json.dumps({"message": "Failed to remove category.", "errors": ["No category with provided ID."]}), 404, {"Content-Type": "application/json"}
         else:
             cursor.close()
             cnx.close()
-            return "Removed category successfully"
+            return json.dumps({"message": "Removed category successfully."}), 200, {"Content-Type": "application/json"}
     else:
-        return "Bad method"
-
+        return json.dumps(
+            {"message": "Failed to find route.", "errors": ["There are no routes with provided method."]}), 404, {
+            'Content-Type': 'application/json'}
 
 @app.route("/choices/", methods=["GET", "POST"])
 def handle_choices_one():
@@ -775,9 +806,9 @@ def handle_choices_one():
             rows = cursor.fetchall()
             cursor.close()
             cnx.close()
-            return json.dumps(rows)
+            return json.dumps({"message": "Successfully retrieved all choices.", "data": rows}), 200, {"Content-Type": "application/json"}
         except Exception as e:
-            return str(e)
+            return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {'Content-Type': 'application/json'}
     elif request.method == "POST":
         query = ("INSERT INTO pasirinkimai"
                  "(pavadinimas)"
@@ -803,7 +834,8 @@ def handle_choices_one():
                         if result is not None:
                             errors.append("A choice with the provided name already exists")
                     except Exception as e:
-                        return str(e)
+                        return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                            'Content-Type': 'application/json'}
         if len(errors) == 0:
             try:
                 cnx = get_database_connection()
@@ -812,14 +844,16 @@ def handle_choices_one():
                 cnx.commit()
                 cursor.close()
                 cnx.close()
-                return "Successfully created choice."
+                return json.dumps({"message": "Successfully created choice."}), 200, {"Content-Type": "application/json"}
             except Exception as e:
-                return str(e)
+                return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                    'Content-Type': 'application/json'}
         else:
-            return errors
+            return json.dumps({"message": "Failed to create choice.", "errors": errors}), 400, {"Content-Type": "application/json"}
     else:
-        return "Bad method"
-
+        return json.dumps(
+            {"message": "Failed to find route.", "errors": ["There are no routes with provided method."]}), 404, {
+            'Content-Type': 'application/json'}
 
 @app.route("/choices/<int:choice_id>", methods=["GET", "PUT", "DELETE"])
 def handle_choices_two(choice_id):
@@ -832,11 +866,11 @@ def handle_choices_two(choice_id):
             cursor.close()
             cnx.close()
             if result is not None:
-                return json.dumps(result)
+                return json.dumps({"message": "Successfully retrieved choice with provided ID.", "data": result}), 200, {"Content-Type": "application/json"}
             else:
-                return "No choice found."
+                return json.dumps({"message": "Failed to retrieve choice.", "errors": ["No choice with provided ID."]}), 404, {"Content-Type": "application/json"}
         except Exception as e:
-            return str(e)
+            return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {'Content-Type': 'application/json'}
     elif request.method == "PUT":
         data = request.json
         errors = []
@@ -848,7 +882,7 @@ def handle_choices_two(choice_id):
             cursor.close()
             cnx.close()
         except Exception as e:
-            return str(e)
+            return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {'Content-Type': 'application/json'}
         if result is None:
             errors.append("No choice found with provided ID")
         else:
@@ -869,7 +903,8 @@ def handle_choices_two(choice_id):
                             if result is not None and result["id"] != choice_id:
                                 errors.append("A choice with the provided name already exists")
                         except Exception as e:
-                            return str(e)
+                            return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                                'Content-Type': 'application/json'}
             else:
                 errors.append("No name provided")
         if len(errors) == 0:
@@ -880,11 +915,12 @@ def handle_choices_two(choice_id):
                 cursor.close()
                 cnx.commit()
                 cnx.close()
-                return "Successfully updated choice."
+                return json.dumps({"message": "Successfully updated choice."}), 200, {"Content-Type": "application/json"}
             except Exception as e:
-                return str(e)
+                return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                    'Content-Type': 'application/json'}
         else:
-            return errors
+            return json.dumps({"message": "Failed to update choice.", "errors": errors}), 400, {"Content-Type": "application/json"}
     elif request.method == "DELETE":
         try:
             cnx = get_database_connection()
@@ -892,18 +928,19 @@ def handle_choices_two(choice_id):
             cursor.execute("DELETE FROM pasirinkimai WHERE id = %s", (choice_id,))
             cnx.commit()
         except Exception as e:
-            return str(e)
+            return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {'Content-Type': 'application/json'}
         if cursor.rowcount == 0:
             cursor.close()
             cnx.close()
-            return "No choice found with provided ID"
+            return json.dumps({"message": "Failed to remove choice.", "errors": ["No choice found with provided ID."]}), 404, {"Content-Type": "application/json"}
         else:
             cursor.close()
             cnx.close()
-            return "Removed choice successfully"
+            return json.dumps({"message": "Removed choice successfully."}), 200, {"Content-Type": "application/json"}
     else:
-        return "Bad method"
-
+        return json.dumps(
+            {"message": "Failed to find route.", "errors": ["There are no routes with provided method."]}), 404, {
+            'Content-Type': 'application/json'}
 
 @app.route("/category_choices", methods=["GET", "POST"])
 def handle_category_choices_one():
@@ -915,9 +952,9 @@ def handle_category_choices_one():
             result = cursor.fetchall()
             cursor.close()
             cnx.close()
-            return json.dumps(result)
+            return json.dumps({"message": "Successfully retrieved all categories and their choices.", "data": result}), 200, {"Content-Type": "application/json"}
         except Exception as e:
-            return str(e)
+            return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {'Content-Type': 'application/json'}
     elif request.method == "POST":
         data = request.json
         errors = []
@@ -936,7 +973,8 @@ def handle_category_choices_one():
                 if result is None:
                     errors.append("Category with provided ID does not exist")
             except Exception as e:
-                return str(e)
+                return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                    'Content-Type': 'application/json'}
         if "choice_id" not in data:
             errors.append("No choice ID is provided")
         elif type(data["choice_id"]) != int:
@@ -952,9 +990,10 @@ def handle_category_choices_one():
                 if result is None:
                     errors.append("Choice with provided ID does not exist")
             except Exception as e:
-                return str(e)
+                return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                    'Content-Type': 'application/json'}
         if len(errors) > 0:
-            return errors
+            return json.dumps({"message": "Failed to add choice to category.", "errors": errors}), 400, {"Content-Type": "application/json"}
         else:
             try:
                 cnx = get_database_connection()
@@ -964,12 +1003,14 @@ def handle_category_choices_one():
                 cursor.close()
                 cnx.close()
             except Exception as e:
-                return str(e)
+                return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                    'Content-Type': 'application/json'}
             if result is not None:
                 errors.append("Category already has this choice")
                 cursor.close()
                 cnx.close()
-                return errors
+                return json.dumps({"message": "Failed to add choice to category.", "errors": errors}), 400, {
+                    "Content-Type": "application/json"}
             else:
                 try:
                     cnx = get_database_connection()
@@ -978,9 +1019,10 @@ def handle_category_choices_one():
                     cnx.commit()
                     cursor.close()
                     cnx.close()
-                    return "Successfully added choice to category"
+                    return json.dumps({"message": "Successfully added choice to category."}), 200, {"Content-Type": "application/json"}
                 except Exception as e:
-                    return str(e)
+                    return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                        'Content-Type': 'application/json'}
 
 
 @app.route("/category_choices/<int:category_id>", methods=["GET", "DELETE"])
@@ -992,15 +1034,15 @@ def handle_category_choices_two(category_id):
             cursor.execute("SELECT * FROM kategorijospasirinkimai WHERE kategorijosId = %s", (category_id,))
             result = cursor.fetchall()
         except Exception as e:
-            return str(e)
+            return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {'Content-Type': 'application/json'}
         if cursor.rowcount == 0:
             cursor.close()
             cnx.close()
-            return "No category choices found with provided category ID"
+            return json.dumps({"message": "Failed to retrieve category and its choices.", "errors": ["No category choices with provided category ID."]}), 404, {'Content-Type': 'application/json'}
         else:
             cursor.close()
             cnx.close()
-            return json.dumps(result)
+            return json.dumps({"message": "Successfully retrieved category and its choices.", "data": result}), 200, {'Content-Type': 'application/json'}
     elif request.method == "DELETE":
         try:
             cnx = get_database_connection()
@@ -1008,18 +1050,19 @@ def handle_category_choices_two(category_id):
             cursor.execute("DELETE FROM kategorijospasirinkimai WHERE kategorijosId = %s", (category_id,))
             cnx.commit()
         except Exception as e:
-            return str(e)
+            return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {'Content-Type': 'application/json'}
         if cursor.rowcount > 0:
             cursor.close()
             cnx.close()
-            return "Successfully deleted all rows with provided category ID: " + str(cursor.rowcount) + " rows affected."
+            return json.dumps({"message": "Successfully deleted all choices for category with provided ID."}), 200, {'Content-Type': 'application/json'}
         else:
             cursor.close()
             cnx.close()
-            return "No category choices records found with provided category ID"
+            return json.dumps({"message": "Failed to delete choices for category.", "errors": ["Category with provided ID has no choices."]}), 404, {'Content-Type': 'application/json'}
     else:
-        return "Bad method"
-
+        return json.dumps(
+            {"message": "Failed to find route.", "errors": ["There are no routes with provided method."]}), 404, {
+            'Content-Type': 'application/json'}
 
 @app.route("/category_choices/<int:category_id>/<int:choice_id>", methods=["PUT", "DELETE"])
 def handle_category_choices_three(category_id, choice_id):
@@ -1039,7 +1082,8 @@ def handle_category_choices_three(category_id, choice_id):
                 cursor.close()
                 cnx.close()
             except Exception as e:
-                return str(e)
+                return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                    'Content-Type': 'application/json'}
             if result is not None:
                 try:
                     cnx = get_database_connection()
@@ -1051,9 +1095,10 @@ def handle_category_choices_three(category_id, choice_id):
                     if result2 is not None:
                         errs.append("Can't change choice ID of this record to one that already exists on this category")
                 except Exception as e:
-                    return str(e)
+                    return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                        'Content-Type': 'application/json'}
         if len(errs) > 0:
-            return errs
+            return json.dumps({"message": "Failed to update choices of category.", "errors": errs}), 400, {"Content-Type": 'application/json'}
         else:
             try:
                 cnx = get_database_connection()
@@ -1064,9 +1109,10 @@ def handle_category_choices_three(category_id, choice_id):
                 cnx.commit()
                 cursor.close()
                 cnx.close()
-                return "Successfully updated choice ID"
+                return json.dumps({"message": "Successfully updated old choice ID with new choice ID."}), 200, {"Content-Type": 'application/json'}
             except Exception as e:
-                return str(e)
+                return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                    'Content-Type': 'application/json'}
     elif request.method == "DELETE":
         try:
             cnx = get_database_connection()
@@ -1076,15 +1122,17 @@ def handle_category_choices_three(category_id, choice_id):
             if cursor.rowcount > 0:
                 cursor.close()
                 cnx.close()
-                return "Successfully deleted choice on category."
+                return json.dumps({"message": "Successfully deleted choice on category."}), 200, {"Content-Type": 'application/json'}
             else:
                 cursor.close()
                 cnx.close()
-                return "No choice with provided ID on category with provided ID found."
+                return json.dumps({"message": "Failed to delete choice on category.", "errors": ["No choice with provided ID on category with provided ID."]}), 404, {"Content-Type": 'application/json'}
         except Exception as e:
-            return str(e)
+            return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {'Content-Type': 'application/json'}
     else:
-        return "Bad method"
+        return json.dumps(
+            {"message": "Failed to find route.", "errors": ["There are no routes with provided method."]}), 404, {
+            'Content-Type': 'application/json'}
 
 
 if __name__ == "__main__":
