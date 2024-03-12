@@ -6,7 +6,17 @@ import mysql.connector
 import bcrypt
 
 def get_database_connection():
-    if os.environ.get("DATABASE_URL"):
+    if os.environ.get("mode") == "test":
+        with open("config.json", 'r') as file:
+            mysql_settings = json.load(file)
+        cnx = mysql.connector.connect(
+            host=mysql_settings["host"],
+            port=mysql_settings["port"],
+            user=mysql_settings["user"],
+            password=mysql_settings["password"],
+            database="tomasbudrikas10$test")
+        return cnx
+    elif os.environ.get("DATABASE_URL"):
         cnx = mysql.connector.connect(
             host=os.environ.get("DATABASE_URL"),
             port=os.environ.get("DATABASE_PORT"),
@@ -30,6 +40,11 @@ app = Flask(__name__)
 @app.route('/')
 def index():
     return "It's alive!"
+
+
+@app.route('/terminate', methods=['POST'])
+def terminate():
+    exit(0)
 
 
 @app.route("/users/", methods=["GET", "POST"])
