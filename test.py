@@ -17,11 +17,12 @@ def run_tests(tests_arg):
         if test.method == "GET":
             response = requests.get(test.url)
         elif test.method == "POST":
-            response = requests.post(test.url, test.body)
+            response = requests.post(test.url, json=test.body)
         elif test.method == "PUT":
-            response = requests.put(test.url, test.body)
+            response = requests.put(test.url, json=test.body)
         elif test.method == "DELETE":
             response = requests.delete(test.url)
+        print(response.text)
         if str(response.json()) != str(test.expected_result):
             errs.append("Expected result and actual result do not match.\n" +
                         "Expected result: " + str(test.expected_result)+ "\n" +
