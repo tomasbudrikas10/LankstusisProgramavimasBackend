@@ -105,7 +105,7 @@ DEFAULT CHARACTER SET = utf8mb4;
 CREATE TABLE IF NOT EXISTS `tomasbudrikas10$mydb`.`vartotojai` (
   `id` INT(11) NOT NULL AUTO_INCREMENT,
   `pavadinimas` VARCHAR(45) NOT NULL,
-  `slaptazodis` VARCHAR(45) NOT NULL,
+  `slaptazodis` VARCHAR(255) NOT NULL,
   `teises` VARCHAR(45) NOT NULL,
   PRIMARY KEY (`id`))
 ENGINE = InnoDB;
