@@ -190,6 +190,20 @@ def handle_product_category_choices_three(product_id, category_id, choice_id):
     if request.method == "PUT":
         json_data = request.json
         errs = []
+        try:
+            cnx = get_database_connection()
+            cursor = cnx.cursor()
+            cursor.execute("SELECT * FROM produktokategorijosirpasirinkimai WHERE (produktoId = %s AND kategorijosId = %s AND pasirinkimoId = %s)", (product_id, category_id, choice_id))
+            result = cursor.fetchone()
+            cursor.close()
+            cnx.close()
+            if result is None:
+                return json.dumps(
+                    {"message": "Failed to update choices of category on this product.", "errors": ["Provided choice doesnt exist on provided category for provided product."]}), 400, {
+                    "Content-Type": 'application/json'}
+        except Exception as e:
+            return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                'Content-Type': 'application/json'}
         if "choice_id" not in json_data:
             errs.append("No new choice ID provided")
         elif type(json_data["choice_id"]) != int:
@@ -218,6 +232,8 @@ def handle_product_category_choices_three(product_id, category_id, choice_id):
                 except Exception as e:
                     return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
                         'Content-Type': 'application/json'}
+            else:
+                errs.append("No choice exists with provided ID.")
         if len(errs) > 0:
             return json.dumps({"message": "Failed to update choices of category on this product.", "errors": errs}), 400, {"Content-Type": 'application/json'}
         else:

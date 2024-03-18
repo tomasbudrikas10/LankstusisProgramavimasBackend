@@ -22,7 +22,6 @@ def run_tests(tests_arg):
             response = requests.put(test.url, json=test.body)
         elif test.method == "DELETE":
             response = requests.delete(test.url)
-        print(response.text)
         if str(response.json()) != str(test.expected_result):
             errs.append("Expected result and actual result do not match.\n" +
                         "Expected result: " + str(test.expected_result)+ "\n" +
