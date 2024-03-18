@@ -1297,6 +1297,18 @@ def handle_category_choices_three(category_id, choice_id):
     if request.method == "PUT":
         json_data = request.json
         errs = []
+        try:
+            cnx = get_database_connection()
+            cursor = cnx.cursor()
+            cursor.execute("SELECT * FROM kategorijospasirinkimai WHERE kategorijosId = %s AND pasirinkimoId = %s", (category_id, choice_id))
+            result = cursor.fetchone()
+            cursor.close()
+            cnx.close()
+            if result is None:
+                errs.append("Provided choice for provided category does not exist.")
+        except Exception as e:
+            return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                'Content-Type': 'application/json'}
         if "choice_id" not in json_data:
             errs.append("No new choice ID provided")
         elif type(json_data["choice_id"]) != int:
@@ -1325,6 +1337,8 @@ def handle_category_choices_three(category_id, choice_id):
                 except Exception as e:
                     return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
                         'Content-Type': 'application/json'}
+            else:
+                errs.append("New choice with provided ID does not exist.")
         if len(errs) > 0:
             return json.dumps({"message": "Failed to update choices of category.", "errors": errs}), 400, {"Content-Type": 'application/json'}
         else:
@@ -1335,9 +1349,13 @@ def handle_category_choices_three(category_id, choice_id):
                     "UPDATE kategorijospasirinkimai SET pasirinkimoId = %s WHERE (kategorijosId = %s AND pasirinkimoId = %s)",
                     (json_data["choice_id"], category_id, choice_id))
                 cnx.commit()
+                rows_affected = cursor.rowcount
                 cursor.close()
                 cnx.close()
-                return json.dumps({"message": "Successfully updated old choice ID with new choice ID."}), 200, {"Content-Type": 'application/json'}
+                if rows_affected > 0:
+                    return json.dumps({"message": "Successfully updated old choice ID with new choice ID."}), 200, {"Content-Type": 'application/json'}
+                else:
+                    return json.dumps({"message": "Failed to update choices of category.", "errors": ["Old choice with provided ID doesn't exist."]}), 404, {"Content-Type": ''}
             except Exception as e:
                 return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
                     'Content-Type': 'application/json'}
