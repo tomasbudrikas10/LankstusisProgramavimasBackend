@@ -966,7 +966,7 @@ def handle_categories_two(category_id):
         except Exception as e:
             return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {'Content-Type': 'application/json'}
         if result is None:
-            errors.append("No category found with provided ID")
+            return json.dumps({"message": "Failed to update category.", "errors": ["No category with provided ID."]}), 404, {"Content-Type": "application/json"}
         else:
             if "name" in data:
                 if type(data["name"]) != str:
