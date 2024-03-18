@@ -6,15 +6,23 @@ import json
 def reset_and_seed_db():
     file_name = "./sql/db_v2.sql"
     db_name = "tomasbudrikas10$mydb"
-    if os.environ.get("mode") == "test":
+    if os.environ.get("mode") == "test" and os.environ.get("DATABASE_URL"):
+        with open("config.json", 'r') as file:
+            cnx = mysql.connector.connect(
+            host=os.environ.get("DATABASE_URL"),
+            port=os.environ.get("DATABASE_PORT"),
+            user=os.environ.get("DATABASE_USER"),
+            password=os.environ.get("DATABASE_PASSWORD"))
+        file_name = "./sql/db_v2_test.sql"
+        db_name = "tomasbudrikas10$test"
+    elif os.environ.get("mode") == "test":
         with open("config.json", 'r') as file:
             mysql_settings = json.load(file)
         cnx = mysql.connector.connect(
             host=mysql_settings["host"],
             port=mysql_settings["port"],
             user=mysql_settings["user"],
-            password=mysql_settings["password"],
-            database="test")
+            password=mysql_settings["password"])
         file_name = "./sql/db_v2_test.sql"
         db_name = "tomasbudrikas10$test"
     elif os.environ.get("DATABASE_URL"):
