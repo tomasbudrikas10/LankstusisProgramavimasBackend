@@ -1,7 +1,13 @@
+import os
+
+
 class Test:
     def __init__(self, name, url, method, expected_status, expected_result, body=None):
         self.name = name
-        self.url = "http://127.0.0.1:5000" + url
+        if os.environ.get("DATABASE_URL"):
+            self.url = "http://tomasbudrikas10.eu.pythonanywhere.com" + url
+        else:
+            self.url = "http://127.0.0.1:5000" + url
         self.method = method
         self.expected_status = expected_status
         self.expected_result = expected_result
