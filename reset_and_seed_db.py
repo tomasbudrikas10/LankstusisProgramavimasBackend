@@ -7,12 +7,11 @@ def reset_and_seed_db():
     file_name = "./sql/db_v2.sql"
     db_name = "tomasbudrikas10$mydb"
     if os.environ.get("mode") == "test" and os.environ.get("DATABASE_URL"):
-        with open("config.json", 'r') as file:
-            cnx = mysql.connector.connect(
-            host=os.environ.get("DATABASE_URL"),
-            port=os.environ.get("DATABASE_PORT"),
-            user=os.environ.get("DATABASE_USER"),
-            password=os.environ.get("DATABASE_PASSWORD"))
+        cnx = mysql.connector.connect(
+        host=os.environ.get("DATABASE_URL"),
+        port=os.environ.get("DATABASE_PORT"),
+        user=os.environ.get("DATABASE_USER"),
+        password=os.environ.get("DATABASE_PASSWORD"))
         file_name = "./sql/db_v2_test.sql"
         db_name = "tomasbudrikas10$test"
     elif os.environ.get("mode") == "test":

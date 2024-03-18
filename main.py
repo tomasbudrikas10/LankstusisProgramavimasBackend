@@ -6,7 +6,15 @@ import mysql.connector
 import bcrypt
 
 def get_database_connection():
-    if os.environ.get("mode") == "test":
+    if os.environ.get("mode") == "test" and os.environ.get("DATABASE_URL"):
+        cnx = mysql.connector.connect(
+        host=os.environ.get("DATABASE_URL"),
+        port=os.environ.get("DATABASE_PORT"),
+        user=os.environ.get("DATABASE_USER"),
+        password=os.environ.get("DATABASE_PASSWORD"),
+        database="tomasbudrikas10$test")
+        return cnx
+    elif os.environ.get("mode") == "test":
         with open("config.json", 'r') as file:
             mysql_settings = json.load(file)
         cnx = mysql.connector.connect(
