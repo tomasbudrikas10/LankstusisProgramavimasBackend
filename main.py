@@ -511,28 +511,27 @@ def handle_reviews_one():
             else:
                 if json_data["rating"] < 1 or json_data["rating"] > 10:
                     errors.append("Rating must be an integer ranging between and including 1 and 10")
-                else:
-                    try:
-                        cnx = get_database_connection()
-                        cursor = cnx.cursor(dictionary=True)
-                        cursor.execute("SELECT * FROM atsiliepimai WHERE `produktoId`=%s AND `vartotojoId`=%s", (json_data["product_id"], json_data["user_id"]))
-                        result = cursor.fetchone()
-                        cursor.close()
-                        cnx.close()
-                        if result is not None:
-                            errors.append("User already provided a review for this product")
-                    except Exception as e:
-                        return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
-                            'Content-Type': 'application/json'}
         if len(errors) == 0:
             try:
                 cnx = get_database_connection()
-                cursor = cnx.cursor()
-                cursor.execute(query, (json_data["product_id"], json_data["user_id"], json_data["rating"]))
-                cnx.commit()
+                cursor = cnx.cursor(dictionary=True)
+                cursor.execute("SELECT * FROM atsiliepimai WHERE `produktoId`=%s AND `vartotojoId`=%s",
+                               (json_data["product_id"], json_data["user_id"]))
+                result = cursor.fetchone()
                 cursor.close()
                 cnx.close()
-                return json.dumps({"message": "Successfully created review."}), 200, {'Content-Type': 'application/json'}
+                if result is not None:
+                    errors.append("User already provided a review for this product")
+                    return json.dumps({"message": "Failed to create review.", "errors": errors}), 400, {"Content-Type": "application/json"}
+                else:
+                    cnx = get_database_connection()
+                    cursor = cnx.cursor()
+                    cursor.execute(query, (json_data["product_id"], json_data["user_id"], json_data["rating"]))
+                    cnx.commit()
+                    cursor.close()
+                    cnx.close()
+                    return json.dumps({"message": "Successfully created review."}), 200, {
+                        'Content-Type': 'application/json'}
             except Exception as e:
                 return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
                     'Content-Type': 'application/json'}
@@ -619,29 +618,29 @@ def handle_reviews_two(review_id):
                 else:
                     if json_data["rating"] < 1 or json_data["rating"] > 10:
                         errors.append("Rating must be an integer ranging between and including 1 and 10")
-                    else:
-                        try:
-                            cnx = get_database_connection()
-                            cursor = cnx.cursor(dictionary=True)
-                            cursor.execute("SELECT * FROM atsiliepimai WHERE `produktoId`=%s AND `vartotojoId`=%s",
-                                           (json_data["product_id"], json_data["user_id"]))
-                            result = cursor.fetchone()
-                            cursor.close()
-                            cnx.close()
-                            if result is not None:
-                                errors.append("User already provided a review for this product")
-                        except Exception as e:
-                            return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
-                                'Content-Type': 'application/json'}
         if len(errors) == 0:
             try:
                 cnx = get_database_connection()
                 cursor = cnx.cursor(dictionary=True)
-                cursor.execute("UPDATE `atsiliepimai` SET `produktoId`=%s, `vartotojoId`=%s, `vertinimas`=%s WHERE `id` = %s", (json_data["product_id"], json_data["user_id"], json_data["rating"], review_id))
-                cnx.commit()
+                cursor.execute("SELECT * FROM atsiliepimai WHERE `produktoId`=%s AND `vartotojoId`=%s",
+                               (json_data["product_id"], json_data["user_id"]))
+                result = cursor.fetchone()
                 cursor.close()
                 cnx.close()
-                return json.dumps({"message": "Successfully updated review."}), 200, {"Content-Type": "application/json"}
+                if result is not None:
+                    errors.append("User already provided a review for this product")
+                    return json.dumps({"message": "Failed to update review.", "errors": errors}), 400, {"Content-Type": "application/json"}
+                else:
+                    cnx = get_database_connection()
+                    cursor = cnx.cursor(dictionary=True)
+                    cursor.execute(
+                        "UPDATE `atsiliepimai` SET `produktoId`=%s, `vartotojoId`=%s, `vertinimas`=%s WHERE `id` = %s",
+                        (json_data["product_id"], json_data["user_id"], json_data["rating"], review_id))
+                    cnx.commit()
+                    cursor.close()
+                    cnx.close()
+                    return json.dumps({"message": "Successfully updated review."}), 200, {
+                        "Content-Type": "application/json"}
             except Exception as e:
                 return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
                     'Content-Type': 'application/json'}
