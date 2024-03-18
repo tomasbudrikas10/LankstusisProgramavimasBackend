@@ -46,6 +46,219 @@ def index():
 def terminate():
     exit(0)
 
+@app.route("/product_category_choices", methods=["GET", "POST"])
+def handle_product_category_choices_one():
+    if request.method == "GET":
+        try:
+            cnx = get_database_connection()
+            cursor = cnx.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM produktokategorijosirpasirinkimai")
+            result = cursor.fetchall()
+            cursor.close()
+            cnx.close()
+            return json.dumps({"message": "Successfully retrieved all product categories and their choices.", "data": result}), 200, {"Content-Type": "application/json"}
+        except Exception as e:
+            return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {'Content-Type': 'application/json'}
+    elif request.method == "POST":
+        data = request.json
+        errors = []
+        if "category_id" not in data:
+            errors.append("No category ID is provided")
+        elif type(data["category_id"]) != int:
+            errors.append("Category ID must be an integer")
+        else:
+            try:
+                cnx = get_database_connection()
+                cursor = cnx.cursor()
+                cursor.execute("SELECT * FROM kategorijos WHERE id = %s", (data["category_id"],))
+                result = cursor.fetchone()
+                cursor.close()
+                cnx.close()
+                if result is None:
+                    errors.append("Category with provided ID does not exist")
+            except Exception as e:
+                return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                    'Content-Type': 'application/json'}
+        if "choice_id" not in data:
+            errors.append("No choice ID is provided")
+        elif type(data["choice_id"]) != int:
+            errors.append("Choice ID provided must be an integer")
+        else:
+            try:
+                cnx = get_database_connection()
+                cursor = cnx.cursor()
+                cursor.execute("SELECT * FROM pasirinkimai WHERE id = %s", (data["choice_id"],))
+                result = cursor.fetchone()
+                cursor.close()
+                cnx.close()
+                if result is None:
+                    errors.append("Choice with provided ID does not exist")
+            except Exception as e:
+                return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                    'Content-Type': 'application/json'}
+        if "product_id" not in data:
+            errors.append("No product ID is provided")
+        elif type(data["product_id"]) != int:
+            errors.append("Product ID must be an integer")
+        else:
+            try:
+                cnx = get_database_connection()
+                cursor = cnx.cursor()
+                cursor.execute("SELECT * FROM produktai WHERE id = %s", (data["product_id"],))
+                result = cursor.fetchone()
+                cursor.close()
+                cnx.close()
+                if result is None:
+                    errors.append("Product with provided ID does not exist")
+            except Exception as e:
+                return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                    'Content-Type': 'application/json'}
+        if len(errors) > 0:
+            return json.dumps({"message": "Failed to add choice to category on product.", "errors": errors}), 400, {"Content-Type": "application/json"}
+        else:
+            try:
+                cnx = get_database_connection()
+                cursor = cnx.cursor()
+                cursor.execute("SELECT * FROM produktokategorijosirpasirinkimai where (kategorijosId = %s AND pasirinkimoId = %s AND produktoId = %s)", (data["category_id"], data["choice_id"], data["product_id"]))
+                result = cursor.fetchone()
+                cursor.close()
+                cnx.close()
+            except Exception as e:
+                return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                    'Content-Type': 'application/json'}
+            if result is not None:
+                errors.append("Category on product already has this choice")
+                cursor.close()
+                cnx.close()
+                return json.dumps({"message": "Failed to add choice to category.", "errors": errors}), 400, {
+                    "Content-Type": "application/json"}
+            else:
+                try:
+                    cnx = get_database_connection()
+                    cursor = cnx.cursor()
+                    cursor.execute("INSERT INTO produktokategorijosirpasirinkimai (produktoId, kategorijosId, pasirinkimoId) VALUES (%s, %s, %s)", (data["product_id"], data["category_id"], data["choice_id"]))
+                    cnx.commit()
+                    cursor.close()
+                    cnx.close()
+                    return json.dumps({"message": "Successfully added choice to category on product."}), 200, {"Content-Type": "application/json"}
+                except Exception as e:
+                    return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                        'Content-Type': 'application/json'}
+
+
+@app.route("/product_category_choices/<int:product_id>", methods=["GET", "DELETE"])
+def handle_product_category_choices_two(product_id):
+    if request.method == "GET":
+        try:
+            cnx = get_database_connection()
+            cursor = cnx.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM produktokategorijosirpasirinkimai WHERE produktoId = %s", (product_id,))
+            result = cursor.fetchall()
+        except Exception as e:
+            return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {'Content-Type': 'application/json'}
+        if cursor.rowcount == 0:
+            cursor.close()
+            cnx.close()
+            return json.dumps({"message": "Failed to retrieve product categories and their choices.", "errors": ["No product with provided product ID."]}), 404, {'Content-Type': 'application/json'}
+        else:
+            cursor.close()
+            cnx.close()
+            return json.dumps({"message": "Successfully retrieved product categories and their choices.", "data": result}), 200, {'Content-Type': 'application/json'}
+    elif request.method == "DELETE":
+        try:
+            cnx = get_database_connection()
+            cursor = cnx.cursor(dictionary=True)
+            cursor.execute("DELETE FROM produktokategorijosirpasirinkimai WHERE produktoId = %s", (product_id,))
+            cnx.commit()
+        except Exception as e:
+            return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {'Content-Type': 'application/json'}
+        if cursor.rowcount > 0:
+            cursor.close()
+            cnx.close()
+            return json.dumps({"message": "Successfully deleted all product categories and choices with provided ID."}), 200, {'Content-Type': 'application/json'}
+        else:
+            cursor.close()
+            cnx.close()
+            return json.dumps({"message": "Failed to delete categories and choices for product.", "errors": ["Product with provided ID has no categories or choices."]}), 404, {'Content-Type': 'application/json'}
+    else:
+        return json.dumps(
+            {"message": "Failed to find route.", "errors": ["There are no routes with provided method."]}), 404, {
+            'Content-Type': 'application/json'}
+
+@app.route("/product_category_choices/<int:product_id>/<int:category_id>/<int:choice_id>", methods=["PUT", "DELETE"])
+def handle_product_category_choices_three(product_id, category_id, choice_id):
+    if request.method == "PUT":
+        json_data = request.json
+        errs = []
+        if "choice_id" not in json_data:
+            errs.append("No new choice ID provided")
+        elif type(json_data["choice_id"]) != int:
+            errs.append("Choice ID must be an integer")
+        else:
+            try:
+                cnx = get_database_connection()
+                cursor = cnx.cursor()
+                cursor.execute("SELECT * FROM pasirinkimai WHERE id = %s", (json_data["choice_id"],))
+                result = cursor.fetchone()
+                cursor.close()
+                cnx.close()
+            except Exception as e:
+                return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                    'Content-Type': 'application/json'}
+            if result is not None:
+                try:
+                    cnx = get_database_connection()
+                    cursor = cnx.cursor()
+                    cursor.execute("SELECT * FROM produktokategorijosirpasirinkimai WHERE (produktoId = %s AND kategorijosId = %s AND pasirinkimoId = %s)", (product_id, category_id, json_data["choice_id"]))
+                    result2 = cursor.fetchone()
+                    cursor.close()
+                    cnx.close()
+                    if result2 is not None:
+                        errs.append("Can't change choice ID of this record to one that already exists on this category on this product")
+                except Exception as e:
+                    return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                        'Content-Type': 'application/json'}
+        if len(errs) > 0:
+            return json.dumps({"message": "Failed to update choices of category on this product.", "errors": errs}), 400, {"Content-Type": 'application/json'}
+        else:
+            try:
+                cnx = get_database_connection()
+                cursor = cnx.cursor()
+                cursor.execute(
+                    "UPDATE produktokategorijosirpasirinkimai SET pasirinkimoId = %s WHERE (produktoId = %s AND kategorijosId = %s AND pasirinkimoId = %s)",
+                    (json_data["choice_id"], product_id, category_id, choice_id))
+                cnx.commit()
+                if cursor.rowcount > 0:
+                    cursor.close()
+                    cnx.close()
+                    return json.dumps({"message": "Successfully updated old choice ID with new choice ID."}), 200, {"Content-Type": 'application/json'}
+                else:
+                    cursor.close()
+                    cnx.close()
+                    return json.dumps({"message": "Failed to update old choice ID with new choice ID.", "errors": "Old choice with provided ID could not be found on provided category on provided product."}), 404, {"Content-Type": 'application/json'}
+            except Exception as e:
+                return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                    'Content-Type': 'application/json'}
+    elif request.method == "DELETE":
+        try:
+            cnx = get_database_connection()
+            cursor = cnx.cursor(dictionary=True)
+            cursor.execute("DELETE FROM produktokategorijosirpasirinkimai WHERE (produktoId = %s AND kategorijosId = %s AND pasirinkimoId = %s)", (product_id, category_id, choice_id))
+            cnx.commit()
+            if cursor.rowcount > 0:
+                cursor.close()
+                cnx.close()
+                return json.dumps({"message": "Successfully deleted choice on category on product."}), 200, {"Content-Type": 'application/json'}
+            else:
+                cursor.close()
+                cnx.close()
+                return json.dumps({"message": "Failed to delete choice on category on product.", "errors": ["No choice with provided ID on category with provided ID on product with provided ID."]}), 404, {"Content-Type": 'application/json'}
+        except Exception as e:
+            return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {'Content-Type': 'application/json'}
+    else:
+        return json.dumps(
+            {"message": "Failed to find route.", "errors": ["There are no routes with provided method."]}), 404, {
+            'Content-Type': 'application/json'}
 
 @app.route("/users/", methods=["GET", "POST"])
 def handle_users_one():
