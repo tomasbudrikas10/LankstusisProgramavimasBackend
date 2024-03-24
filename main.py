@@ -884,11 +884,29 @@ def handle_products_two(product_id):
                 else:
                     if len(json_data["product_url"].strip()) == 0:
                         errors.append("Product URL must not be empty")
+            if "user_id" not in json_data:
+                errors.append("User ID is required")
+            else:
+                if type(json_data["user_id"]) != int:
+                    errors.append("User ID must be an integer")
+                else:
+                    try:
+                        cnx = get_database_connection()
+                        cursor = cnx.cursor(dictionary=True)
+                        cursor.execute("SELECT * FROM vartotojai WHERE `id`=%s", (json_data["user_id"],))
+                        result = cursor.fetchone()
+                        cursor.close()
+                        cnx.close()
+                        if result is None:
+                            errors.append("Provided user ID does not exist")
+                    except Exception as e:
+                        return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                            'Content-Type': 'application/json'}
         if len(errors) == 0:
             try:
                 cnx = get_database_connection()
                 cursor = cnx.cursor()
-                cursor.execute("UPDATE `produktai` SET `pavadinimas`=%s, `aprasymas`=%s, `paveiksliukas`=%s, `gamintojas`=%s, `produkto_puslapis`=%s WHERE `id` = %s", (json_data["name"].strip(), json_data["description"].strip(), json_data["image_url"].strip(), json_data["manufacturer"].strip(), json_data["product_url"].strip(), product_id))
+                cursor.execute("UPDATE `produktai` SET `pavadinimas`=%s, `aprasymas`=%s, `paveiksliukas`=%s, `gamintojas`=%s, `produkto_puslapis`=%s, `vartotojoId`=%s WHERE `id` = %s", (json_data["name"].strip(), json_data["description"].strip(), json_data["image_url"].strip(), json_data["manufacturer"].strip(), json_data["product_url"].strip(), json_data["user_id"], product_id))
                 cursor.close()
                 cnx.commit()
                 cnx.close()
