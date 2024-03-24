@@ -1276,6 +1276,63 @@ def handle_category_choices_one():
                         'Content-Type': 'application/json'}
 
 
+@app.route("/login", methods=["POST"])
+def login():
+    if request.method == "POST":
+        json_data = request.json
+        errors = []
+        user_data = None
+        if "name" not in json_data:
+            errors.append("Name is required")
+        else:
+            if type(json_data["name"]) != str:
+                errors.append("Name must be a string")
+            else:
+                if len(json_data["name"].strip()) == 0:
+                    errors.append("Name must not be empty")
+                else:
+                    try:
+                        cnx = get_database_connection()
+                        cursor = cnx.cursor(dictionary=True)
+                        cursor.execute("SELECT * FROM vartotojai WHERE `pavadinimas`=%s", (json_data["name"],))
+                        result = cursor.fetchone()
+                        cursor.close()
+                        cnx.close()
+                        if result is None:
+                            errors.append("No user exists with the provided name")
+                        else:
+                            user_data = result
+                    except Exception as e:
+                        return json.dumps({"message": "Encountered a database error", "errors": [str(e)]}), 500, {
+                            'Content-Type': 'application/json'}
+        if "password" not in json_data:
+            errors.append("Password is required")
+        else:
+            if type(json_data["password"]) != str:
+                errors.append("Password must be a string")
+            else:
+                if len(json_data["password"].strip()) == 0:
+                    errors.append("Password must not be empty")
+        if len(errors) > 0:
+            return json.dumps({"message": "Failed to log user in.", "errors": errors}), 400, {'Content-Type': 'application/json'}
+        else:
+            passwords_match = bcrypt.checkpw(bytes(json_data["password"], 'utf-8'), bytes(user_data["slaptazodis"], 'utf-8'))
+            if passwords_match:
+                return json.dumps({"message": "Successfully logged user in.", "data": {
+                    "id": user_data["id"],
+                    "username": user_data["pavadinimas"],
+                    "role": user_data["teises"]
+                }}), 200, {'Content-Type': 'application/json'}
+            else:
+                errors.append("Provided password is incorrect")
+                return json.dumps({"message": "Failed to log user in.", "errors": errors}), 400, {
+                    'Content-Type': 'application/json'}
+    else:
+        return json.dumps(
+            {"message": "Failed to find route.", "errors": ["There are no routes with provided method."]}), 404, {
+            'Content-Type': 'application/json'}
+
+
 @app.route("/category_choices/<int:category_id>", methods=["GET", "DELETE"])
 def handle_category_choices_two(category_id):
     if request.method == "GET":
